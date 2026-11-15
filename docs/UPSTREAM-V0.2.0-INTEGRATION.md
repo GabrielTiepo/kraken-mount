@@ -26,7 +26,7 @@
 2. **LIH continua não suportado**, apesar do anúncio amplo de FPKG; veja `crates/kraken-mount-pkg/src/pkg.rs`. L05/L06 permanecem abertos.
 3. **Sparse desalinhado pode extrair arquivo inteiro** para SSD interno (caminho atual em `src/cache.rs`); não foi solucionado nesta sincronização.
 4. PRs [#11](https://github.com/GabrielTiepo/kraken-mount/pull/11) (L01) e [#12](https://github.com/GabrielTiepo/kraken-mount/pull/12) (L04) são anteriores à atualização oficial e precisam de adaptação e testes específicos em `src/config.rs`, `src/main.rs`, `src/web.rs` e `src/ui.html`.
-5. **CI do fork ainda sem execuções no Actions** na última consulta; merge de código não representa build compilado, testes Rust executados ou homologação física. O ELF oficial pode ser usado como referência estável de retorno, mas não validar automaticamente o nosso ELF.
+5. **Evolução da validação:** o GitHub Actions foi habilitado após o primeiro merge e aprovou os PRs #11, #12 e #14, inclusive check FreeBSD, testes e build Docker/ELF. Veja o [run #43762225138](https://github.com/GabrielTiepo/kraken-mount/actions/runs/43762225138). Isso não equivale à homologação no PS5; conservar o ELF funcional para rollback.
 
 ## Gate antes de qualquer release personalizada
 
@@ -36,3 +36,11 @@
 - [ ] Build Docker `ps5/build.sh` com SHA-256 de `kraken-mount.elf`
 - [ ] Testar NBA 2K27, `PPSA35889`, FPKG+backport, SSD SATA USB, pelo menos menu, partida, save e relançamento
 - [ ] Provar que o cache anterior é preservado após atualização e que não há operação destrutiva sobre fonte de jogos
+
+## Situação após a integração dos incrementos (15/11/2026)
+
+- [PR #13](https://github.com/GabrielTiepo/kraken-mount/pull/13): upstream v0.2.0 integrado.
+- [PR #14](https://github.com/GabrielTiepo/kraken-mount/pull/14): proteção dos caches de mídia removível integrada e com CI verde.
+- [PR #11](https://github.com/GabrielTiepo/kraken-mount/pull/11): filtros PKG/pasta integrados e com CI verde.
+- [PR #12](https://github.com/GabrielTiepo/kraken-mount/pull/12): diagnóstico de scan/cache integrado e com CI verde.
+- `main` não foi alterada; **nenhum ELF do fork foi homologado em hardware**.
