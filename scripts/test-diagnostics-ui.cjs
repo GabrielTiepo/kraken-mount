@@ -9,6 +9,8 @@ const path = require('node:path');
 
 const html = fs.readFileSync(path.join(__dirname, '..', 'src', 'ui.html'), 'utf8');
 assert.ok(html.includes('id="diag-scan"') && html.includes('id="diag-build"'));
+assert.ok(html.includes('id="f_source_mode"'), 'L01 game-source filter must survive L04');
+assert.ok(html.includes('id="f_ampr_auto_update"'), 'v0.2.0 AMPR updater setting must survive L04');
 const start = html.indexOf('function renderSettingsInfo()');
 const end = html.indexOf('async function loadSettings()', start);
 assert.ok(start > 0 && end > start, 'diagnostics renderer must be present');
