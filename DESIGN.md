@@ -156,6 +156,15 @@ pub fn save(s: &Settings) -> std::io::Result<()>;
 pub fn to_json(s: &Settings) -> serde_json::Value;          // keys = config keys, scanpath = array
 pub fn from_json(v: &serde_json::Value) -> Result<Settings, String>;
 
+// diagnostics.rs (RAM-only management timers)
+#[derive(Clone, Debug, Default)]
+pub struct Diagnostics { pub scan: Option<ScanSample>, pub builds: Vec<BuildSample> }
+impl Diagnostics {
+    pub fn record_scan(&mut self, elapsed: std::time::Duration, games: usize, duplicates: usize, errors: usize);
+    pub fn record_build(&mut self, title_id: &str, drive: &str, kind: &'static str,
+        elapsed: std::time::Duration, success: bool);
+}
+
 // storage.rs
 pub struct Drive { pub mount: String, pub label: String, pub kind: &'static str /* internal|usb|ext */,
   pub total: u64, pub free: u64 }
@@ -209,6 +218,21 @@ pub fn uninstall(tid: &str) -> std::io::Result<()>;       // sceAppInstUtilAppUn
 pub fn watch(titles: Arc<Mutex<HashSet<String>>>, running: Arc<Mutex<HashSet<String>>>);
 ```
 
+## Baseline diagnostics (`src/diagnostics.rs`)
+
+- Monotonic `Instant` measures the **total wall-clock time** of a whole `scan::scan` pass
+  and a `cache::build` operation, including filesystem and indexing overhead.
+- Samples are in RAM only, replaced each scan, and the **latest eight** cache builds are retained
+  in arrival order. They reset when the ELF restarts. No individual read tracing or log spam.
+- The API returns integer milliseconds (not guaranteed to be nonzero for very short calls)
+  and source mount `drive`; no per-title source file paths are added to the diagnostic payload.
+- This **does not** measure AMPR runtime I/O, USB-SATA throughput, page cache hit rate,
+  game FPS, 64 KiB page performance, or p95/p99. Do not use the numbers as evidence that
+  read-ahead or a new block size is faster. Those require a separate instrumented AMPR runtime
+  and A/B measurements on the same SSD and games.
+- The settings page displays a compact optional diagnostics panel, pt-BR for Portuguese
+  browser settings and English fallback otherwise.
+
 ## Web API (`src/web.rs`, port 8097, served to `src/ui.html`)
 - `GET /` ui.html (`__VERSION__` filled in); `GET /app-icon.png` the app icon (`ps5/icon0.png`);
   `GET /bg.jpg` the background (`src/bg.jpg`); `GET /kraken.appcache` the AppCache manifest
@@ -216,7 +240,10 @@ pub fn watch(titles: Arc<Mutex<HashSet<String>>>, running: Arc<Mutex<HashSet<Str
 - `GET /api/state`:
   `{version, busy, paused, waiting:"kstuff"|"shadowmount"|null, running:[TID], games:[{title_id, title_name, version, path, kind:"pkg"|"folder", packing:"plain"|"zstd"|"lz4"|null,
   drive, size, status:"pending"|"checking"|"building"|"ready"|"error"|"duplicate", error, cache_size, cache_built, backport}],
-  drives:[{mount, label, kind, total, free}], cache:{path, size, free, low_space, ampr_present}, log:[last 100 lines of the last 64 KiB]}`
+  drives:[{mount, label, kind, total, free}],
+  diagnostics:{scope:"management",scan:{elapsed_ms,games,duplicates,errors}|null,
+    builds:[{title_id,drive,kind:"pkg"|"folder",elapsed_ms,success}]},
+  cache:{path, size, free, low_space, ampr_present}, log:[last 100 lines of the last 64 KiB]}`
 - `GET /api/settings` -> settings JSON; `POST /api/settings` (JSON body) -> save, apply, rescan.
 - `POST /api/rescan`, `POST /api/rebuild/<TID>`, `POST /api/rebuild-all`, `POST /api/purge` -> 204.
 - `GET /api/sizes/<TID>` -> `{game: u64, dlc: u64, save: u64|null, cache: u64}` in bytes,
