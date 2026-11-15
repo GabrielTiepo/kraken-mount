@@ -42,6 +42,19 @@ source resides on a disconnected USB or extended drive**. Reconnect the drive
 before using Purge. This is a safety guard, not a guarantee against unplugging
 storage during an active operation. No package, backport or save is changed.
 
+### Incremental backport library refresh (fork)
+
+When a PKG backport's **fakelib/fakelib2** changes but its other game files
+remain unchanged, Kraken can refresh just the library without rebuilding the
+AMPR indexes or extracting game files again. Existing caches that lack the
+new metadata may perform one normal rebuild; uncertain changes always fall
+back to the original behavior. The inventory uses filenames, sizes and
+timestamps, **not** full cryptographic hashes.
+
+**PT-BR:** Alterações somente na biblioteca do backport podem atualizar a
+`fakelib` sem reindexar o PKG. Alterações no `eboot.bin`, nos módulos ou
+em outros arquivos do jogo ainda seguem o rebuild completo.
+
 ### Diagnostics for external SATA USB SSDs (fork)
 
 Settings → Scan and cache diagnostics (PT-BR: Configurações → Diagnóstico de
