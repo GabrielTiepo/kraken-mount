@@ -41,10 +41,13 @@ fn inventory(root: &Path, exclude_libs: bool) -> io::Result<Inventory> {
                     .ok_or_else(|| io::Error::new(ErrorKind::InvalidData, "non-UTF8 backport path"))?,
                 _ => return Err(io::Error::new(ErrorKind::InvalidData, "invalid backport path")),
             };
-            if exclude_libs && (first.eq_ignore_ascii_case("fakelib") || first.eq_ignore_ascii_case("fakelib2")) {
+            let meta = fs::symlink_metadata(&path)?;
+            // Skip only actual top-level library DIRECTORIES. A regular game file
+            // literally named "fakelib" must remain in the game inventory.
+            if exclude_libs && rel.components().count() == 1 && meta.is_dir()
+                && (first.eq_ignore_ascii_case("fakelib") || first.eq_ignore_ascii_case("fakelib2")) {
                 continue;
             }
-            let meta = fs::symlink_metadata(&path)?;
             // Never classify a symlink as unchanged by looking only at its link's
             // mtime: the target can change independently. Disallow fast path.
             if meta.file_type().is_symlink() {
@@ -124,6 +127,14 @@ mod tests {
         let second = game_files(&temp.0).unwrap();
         temp.put("module/extra.prx", b"new");
         assert_ne!(second, game_files(&temp.0).unwrap());
+    }
+
+    #[test]
+    fn ordinary_file_named_fakelib_is_game_data() {
+        let temp = Temp::new("named-file");
+        temp.put("fakelib", b"ordinary-game-file");
+        assert_eq!(game_files(&temp.0).unwrap().len(), 1);
+        assert_eq!(game_files(&temp.0).unwrap()[0].0, "fakelib");
     }
 
     #[test]
