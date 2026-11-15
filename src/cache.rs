@@ -414,6 +414,22 @@ fn backport_lib_only(src: &Source, old: &serde_json::Value, new: &serde_json::Va
     let (Some(saved_game), Some(saved_lib)) = (old.get(BP_DATA), old.get(BP_LIB)) else {
         return false;
     };
+    // Cheap, sidecar-only gate BEFORE sampling 128 KiB of the external PKG:
+    // the normal 10-second scan must not reopen the PKG when nothing changed.
+    let changed_lib_selection = old.get("fakelib") != new.get("fakelib");
+    let changed_backport_root = src.backport.as_ref().is_some_and(|root| {
+        fs::symlink_metadata(root).and_then(|m| m.modified()).is_ok_and(|at| at >= done_mtime)
+    });
+    let changed_lib_files = bp_lib(src).is_some_and(|lib| {
+        walk(&lib).iter().any(|(_, m)| m.modified().is_ok_and(|at| at >= done_mtime))
+    });
+    if !changed_lib_selection && !changed_backport_root && !changed_lib_files {
+        return false;
+    }
+    let Some((game, lib)) = backport_snapshot(src) else { return false };
+    if saved_game != &game || (saved_lib == &lib && !changed_lib_selection) {
+        return false;
+    }
     let d = dir(&src.title_id);
     if [BUILT, IMAGE_FILE, "ampr_emu.index", "ampr_assets.index",
         "eboot.bin", "sce_sys/param.json"]
@@ -423,11 +439,7 @@ fn backport_lib_only(src: &Source, old: &serde_json::Value, new: &serde_json::Va
     if !fs::metadata(&src.path).and_then(|m| m.modified()).is_ok_and(|time| time < done_mtime) {
         return false;
     }
-    if !old[PKG_ID].as_str().is_some_and(|expected| pkg_id(&src.path).ok().as_deref() == Some(expected)) {
-        return false;
-    }
-    let Some((game, lib)) = backport_snapshot(src) else { return false };
-    saved_game == &game && (saved_lib != &lib || old.get("fakelib") != new.get("fakelib"))
+    old[PKG_ID].as_str().is_some_and(|expected| pkg_id(&src.path).ok().as_deref() == Some(expected))
 }
 const ID_SPAN: usize = 0x10000;
 
