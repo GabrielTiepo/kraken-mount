@@ -35,6 +35,13 @@ when Only PKG is selected.** Cache Purge is disabled while filters hide games.
 **PT-BR:** Em *Configurações → Formatos de jogos detectados*, selecione
 *Todos*, *Somente PKG* ou *Somente pastas*. O backport em pasta continua funcionando.
 
+### Removable-drive cache safety (fork)
+
+The Cache Purge operation now **refuses to remove caches when a previously indexed
+source resides on a disconnected USB or extended drive**. Reconnect the drive
+before using Purge. This is a safety guard, not a guarantee against unplugging
+storage during an active operation. No package, backport or save is changed.
+
 To build it yourself: `ps5/build.sh` (needs Docker), output `target/ps5/kraken-mount.elf`.
 
 ## Thanks

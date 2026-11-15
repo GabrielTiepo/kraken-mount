@@ -252,8 +252,41 @@ pub fn total_size() -> u64 {
     du(Path::new(CACHES))
 }
 
+/// Preflight *all* cache stamps before a destructive purge. A missing USB mount
+/// must not be mistaken for a source that the user intentionally deleted.
+/// This is an explicit-purge-only check; no overhead is added to the read path.
+fn purge_media_preflight() -> Result<()> {
+    let mounted = crate::storage::mounted_aliases();
+    let Ok(rd) = fs::read_dir(CACHES) else { return Ok(()) };
+    for entry in rd {
+        let entry = entry?;
+        if !entry.file_type()?.is_dir() {
+            continue;
+        }
+        let done = entry.path().join(DONE);
+        let bytes = match fs::read(&done) {
+            Ok(bytes) => bytes,
+            Err(e) if e.kind() == ErrorKind::NotFound => continue,
+            Err(e) => return Err(Error::new(e.kind(), format!("read {}: {e}", done.display()))),
+        };
+        let stamp: serde_json::Value = serde_json::from_slice(&bytes)
+            .map_err(|e| bad(format!("{}: invalid cache stamp: {e}", done.display())))?;
+        let src = stamp["source"].as_str()
+            .ok_or_else(|| bad(format!("{}: missing source; purge refused", done.display())))?;
+        if let Some(mount) = crate::removable_guard::unavailable_mount(src, &mounted) {
+            return Err(Error::new(
+                ErrorKind::WouldBlock,
+                format!("purge refused: cached source {} is on missing volume {mount}; reconnect the drive", src),
+            ));
+        }
+    }
+    Ok(())
+}
+
 /// Deletes caches/<TID> not in `keep`; empties the kept ones so they rebuild.
+/// Refuses the entire operation if a cached USB/extended source is unavailable.
 pub fn purge(keep: &[String]) -> Result<()> {
+    purge_media_preflight()?;
     let Ok(rd) = fs::read_dir(CACHES) else { return Ok(()) };
     for e in rd.flatten() {
         let path = e.path();
