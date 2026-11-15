@@ -2,11 +2,12 @@
 name: build
 
 on:
-  # Every push (any branch or tag) runs the check and the build; only v* tags release.
+  # Feature branches are checked via PRs, avoiding duplicate expensive Docker builds.
   push:
-    branches: ['**']
-    tags: ['**']
+    branches: [main, develop]
+    tags: ['v*']
   pull_request:
+    branches: [main, develop]
   workflow_dispatch:
 
 permissions:
@@ -38,6 +39,8 @@ jobs:
           restore-keys: host-${{ runner.os }}-${{ env.RUSTUP_TOOLCHAIN }}-
       - name: cargo check --workspace
         run: cargo check --workspace --locked --target x86_64-unknown-freebsd
+      - name: Synthetic FIH/CNT parser tests (native Linux)
+        run: cargo test -p kraken-mount-pkg --lib --locked
       - name: node --check (src/ui.html script)
         run: |
           sed -n '/^<script>$/,/^<\/script>$/p' src/ui.html | sed '1d;$d' > "$RUNNER_TEMP/ui.js"
@@ -46,6 +49,8 @@ jobs:
 
   payload:
     name: build payload
+    # Do not spend PS5 Docker build minutes if the host checks or unit tests fail.
+    needs: check
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
