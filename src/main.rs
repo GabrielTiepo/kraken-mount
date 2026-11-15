@@ -412,12 +412,18 @@ fn main() {
         }
         // Purge after the scan, so `keep` is this scan's library and every kept title rebuilds below.
         if state.purge.swap(false, Ordering::SeqCst) {
-            let keep: Vec<String> = r.games.iter().map(|g| g.title_id.clone()).collect();
-            match cache::purge(&keep) {
-                Ok(()) => log!("caches purged; {} kept for rebuild", keep.len()),
-                Err(e) => log!("purge {}: {e}", cache::CACHES),
+            if s.source_mode != source_mode::SourceMode::All {
+                // Guard again here: a purge may have been queued before the user changed
+                // the filter. Do not delete caches for currently hidden games.
+                log!("cache purge skipped: source_mode must be all");
+            } else {
+                let keep: Vec<String> = r.games.iter().map(|g| g.title_id.clone()).collect();
+                match cache::purge(&keep) {
+                    Ok(()) => log!("caches purged; {} kept for rebuild", keep.len()),
+                    Err(e) => log!("purge {}: {e}", cache::CACHES),
+                }
+                state.forced.lock().unwrap().extend(keep);
             }
-            state.forced.lock().unwrap().extend(keep);
         }
         publish(&state, &r);
         // A source that left the scan (USB unplugged) goes through register::mount again when back.
