@@ -323,3 +323,44 @@ fn boundaries<R: PRead>(
         .collect();
     Ok((bounds, sparse, mount))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn sparse_holes_fill_only_their_declared_ranges() {
+        let sparse = [(0x20000, 0x60000)];
+        let mut logical = 0x20000;
+        let mut blocks = Vec::new();
+        fill_sparse(&sparse, &mut logical, &mut blocks);
+        assert_eq!(logical, 0x60000);
+        assert_eq!(blocks.len(), 1);
+        assert_eq!(blocks[0].logical, 0x20000);
+        assert_eq!(blocks[0].len, UBLOCK as u32);
+        assert!(blocks[0].sparse());
+    }
+
+    #[test]
+    fn adjacent_sparse_holes_do_not_leave_gaps() {
+        let sparse = [(0x10000, 0x50000), (0x50000, 0x78000)];
+        let mut logical = 0x10000;
+        let mut blocks = Vec::new();
+        fill_sparse(&sparse, &mut logical, &mut blocks);
+        assert_eq!(logical, 0x78000);
+        assert_eq!(blocks.len(), 2);
+        assert_eq!(blocks[0].logical, 0x10000);
+        assert_eq!(blocks[0].len, UBLOCK as u32);
+        assert_eq!(blocks[1].logical, 0x50000);
+        assert_eq!(blocks[1].len, 0x28000);
+        assert!(blocks.iter().all(KBlock::sparse));
+    }
+
+    #[test]
+    fn next_record_after_hole_must_not_shorten_previous_block() {
+        // Historical sparse boundary case: block 0..0x30000, hole
+        // 0x30000..0x41000, next record starts inside the next window.
+        let len = block_len(0, 0x30000, 0x100, 0, false, Some(0x41000));
+        assert_eq!(len, 0x30000);
+    }
+}
