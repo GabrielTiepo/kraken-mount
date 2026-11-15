@@ -24,6 +24,18 @@ It mounts debug FPKG `.pkg` files, game folders (plain, or packed with zstd or L
 Caches live in `/data/krakenmount/caches/<TITLE_ID>`, settings in
 `/data/krakenmount/config.toml` and the log in `/data/krakenmount/kraken.log`.
 
+### Basic performance diagnostics
+
+Under **Settings → Scan and cache diagnostics** (Português: *Configurações →
+Diagnóstico de varredura e cache*), Kraken Mount displays the last full scan's
+duration and the most recent cache build's title ID, source drive, duration and
+result. This information is held only in RAM and is cleared after a restart.
+
+**Important:** These are management timings, **not** the speed of reading PKG
+blocks while a game runs. They cannot be used to claim that changing USB,
+AMPR read-ahead or block sizes improves loading times without a separate
+instrumented test. See [L04 baseline](docs/L04-DIAGNOSTICS-BASELINE.md).
+
 To build it yourself: `ps5/build.sh` (needs Docker), output `target/ps5/kraken-mount.elf`.
 
 ## Thanks
