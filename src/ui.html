@@ -437,6 +437,13 @@ button:disabled { opacity: 0.5; cursor: default; }
     <label class="row col"><span class="lbl" data-i18n="scanPaths">Scan paths</span>
       <span class="hint" data-i18n="scanPathsHint">One per line. Empty = default roots (/data/homebrew, /data/etaHEN/games, each drive's homebrew, etaHEN/games and root).</span>
       <textarea id="f_scanpath" spellcheck="false"></textarea></label>
+    <label class="row col"><span class="lbl" data-i18n="sourceMode">Game source formats</span>
+      <span class="hint" data-i18n="sourceModeHint">Filters future scans without deleting PKGs or caches; backports remain available for PKGs.</span>
+      <select id="f_source_mode" aria-label="Game source formats" data-i18n-aria="sourceMode">
+        <option value="all" data-i18n="sourceAll">All: PKG and folders</option>
+        <option value="pkg" data-i18n="sourcePkg">Only PKG</option>
+        <option value="folder" data-i18n="sourceFolder">Only game folders</option>
+      </select></label>
     <label class="row"><span class="lbl" data-i18n="injectAmpr">Inject ampr-emu-ng into every game's fakelib</span><input type="checkbox" id="f_inject_ampr"></label>
     <label class="row"><span class="lbl" data-i18n="amprAutoUpdate">Auto-update ampr-emu-ng (checked once at start)</span><input type="checkbox" id="f_ampr_auto_update"></label>
     <div class="row"><span><span class="lbl" id="amprstatus">ampr-emu-ng</span><span class="hint" id="amprmsg"></span></span><button id="amprupdate" type="button" data-i18n="amprUpdateNow">Update ampr-emu-ng now</button></div>
@@ -580,6 +587,10 @@ var MSG = {
     amprReplaceText: "The latest release replaces it. Your file is moved to {backup}.",
     amprReplaceYes: "Replace",
     backports: 'Apply backports',
+    sourceMode: 'Game source formats',
+    sourceModeHint: 'Filters future scans without deleting PKGs or caches; backports remain available for PKGs.',
+    sourceAll: 'All: PKG and folders', sourcePkg: 'Only PKG', sourceFolder: 'Only game folders',
+    purgeFiltered: 'Select All formats before clearing caches, to avoid deleting hidden games.',
     scanInterval: 'Scan interval, seconds (1-3600)',
     lowSpaceGb: 'Low space warning, GB',
     notify: 'System notifications',
@@ -1119,6 +1130,10 @@ var MSG = {
     amprReplaceText: "A versão mais recente o substitui. Seu arquivo é movido para {backup}.",
     amprReplaceYes: "Substituir",
     backports: 'Aplicar backports',
+    sourceMode: 'Formatos de jogos detectados',
+    sourceModeHint: 'Filtra novas varreduras sem excluir PKGs ou caches; backports continuam disponíveis para jogos PKG.',
+    sourceAll: 'Todos: PKG e pastas', sourcePkg: 'Somente PKG', sourceFolder: 'Somente pastas de jogos',
+    purgeFiltered: 'Selecione Todos os formatos antes de limpar caches, para preservar os jogos ocultos pelo filtro.',
     scanInterval: 'Intervalo de varredura, segundos (1-3600)',
     lowSpaceGb: 'Aviso de pouco espaço, GB',
     notify: 'Notificações do sistema',
@@ -1958,14 +1973,23 @@ async function poll() {
 var BOOLS = ['inject_ampr', 'ampr_auto_update', 'backports', 'notify', 'log', 'debug'];
 var NUMS = ['scan_interval_seconds', 'low_space_gb'];
 var settingsRequest = 0;
+function guardPurge() {
+  var filtered = $('f_source_mode').value !== 'all';
+  $('spurge').disabled = filtered;
+  $('spurge').title = filtered ? t('purgeFiltered') : '';
+}
+$('f_source_mode').onchange = guardPurge;
 function fillSettings(v) {
   $('f_scanpath').value = (v.scanpath || []).join('\n');
+  $('f_source_mode').value = v.source_mode || 'all';
+  guardPurge();
   BOOLS.forEach(function (k) { $('f_' + k).checked = v[k] === true || v[k] === 1; });
   NUMS.forEach(function (k) { $('f_' + k).value = v[k] == null ? '' : v[k]; });
 }
 function readSettings() {
   var v = {
-    scanpath: $('f_scanpath').value.split('\n').map(function (x) { return x.trim(); }).filter(Boolean)
+    scanpath: $('f_scanpath').value.split('\n').map(function (x) { return x.trim(); }).filter(Boolean),
+    source_mode: $('f_source_mode').value
   };
   BOOLS.forEach(function (k) { v[k] = $('f_' + k).checked; });
   NUMS.forEach(function (k) { var n = parseInt($('f_' + k).value, 10); if (!isNaN(n)) v[k] = n; });

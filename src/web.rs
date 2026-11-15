@@ -324,6 +324,9 @@ fn route(state: &State, head: &str, body: &[u8], loopback: bool) -> Reply {
         ("POST", p) if p.starts_with("/api/rebuild/") => rebuild(state, &p["/api/rebuild/".len()..]),
         ("POST", p) if p.starts_with("/api/delete/") => delete(state, &p["/api/delete/".len()..], body),
         ("POST", "/api/purge") => {
+            if state.settings.lock().unwrap().source_mode != crate::source_mode::SourceMode::All {
+                return reply(409, "text/plain", "cache purge requires source_mode=all");
+            }
             log!("cache purge requested");
             state.purge.store(true, Ordering::SeqCst);
             state.wake();

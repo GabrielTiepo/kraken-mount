@@ -25,6 +25,16 @@ kept until you delete it.
 Caches live in `/data/krakenmount/caches/<TITLE_ID>`, settings in
 `/data/krakenmount/config.toml` and the log in `/data/krakenmount/kraken.log`.
 
+### Source format filter (fork, opt-in)
+
+In Settings, use **All: PKG and folders** (default), **Only PKG**, or **Only game folders**.
+The config key `source_mode = "all" | "pkg" | "folder"` controls discovery only; games and
+cached data are not deleted when toggling the filter. **PKG backports in folders still work
+when Only PKG is selected.** Cache Purge is disabled while filters hide games.
+
+**PT-BR:** Em *Configurações → Formatos de jogos detectados*, selecione
+*Todos*, *Somente PKG* ou *Somente pastas*. O backport em pasta continua funcionando.
+
 ### Removable-drive cache safety (fork)
 
 The Cache Purge operation now **refuses to remove caches when a previously indexed

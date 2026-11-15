@@ -11,6 +11,7 @@ mod i18n;
 mod ampr_index;
 mod cache;
 mod config;
+mod source_mode;
 mod launch;
 mod net;
 mod register;
@@ -625,18 +626,22 @@ fn main() {
         *state.settings.lock().unwrap() = s.clone();
         state.busy.store(true, Ordering::SeqCst);
         let roots = if s.scan_paths.is_empty() { storage::default_scan_roots() } else { s.scan_paths.clone() };
-        let r = scan::scan(&roots, s.backports);
+        let r = scan::scan(&roots, s.backports, s.source_mode);
         if state.paused() {
             continue;
         }
         // Purge after the scan, so `keep` is this scan's library and every kept title rebuilds below.
         if state.purge.swap(false, Ordering::SeqCst) {
-            let keep: Vec<String> = r.games.iter().map(|g| g.title_id.clone()).collect();
-            match cache::purge(&keep) {
-                Ok(()) => log!("caches purged; {} kept for rebuild", keep.len()),
-                Err(e) => log!("purge {}: {e}", cache::CACHES),
+            if s.source_mode != source_mode::SourceMode::All {
+                log!("cache purge skipped: a source filter is active");
+            } else {
+                let keep: Vec<String> = r.games.iter().map(|g| g.title_id.clone()).collect();
+                match cache::purge(&keep) {
+                    Ok(()) => log!("caches purged; {} kept for rebuild", keep.len()),
+                    Err(e) => log!("purge {}: {e}", cache::CACHES),
+                }
+                state.forced.lock().unwrap().extend(keep);
             }
-            state.forced.lock().unwrap().extend(keep);
         }
         publish(&state, &r);
         // A source that left the scan (USB unplugged) goes through register::mount again when back.
