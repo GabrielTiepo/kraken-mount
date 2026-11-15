@@ -1,46 +1,39 @@
 <p align="center"><img src="docs/logo.png" width="128" alt="Kraken Mount"></p>
 
-A PS5 ELF payload. It finds games on the internal SSD and on USB or extended drives.
+A PS5 game mounter. It finds games on the internal SSD, the M.2 drive and USB drives, and adds
+them to the home screen without installing them.
 
-It mounts debug FPKG `.pkg` files, game folders (plain, or packed with zstd or LZ4).
+Supported formats: debug FPKG (`.pkg`) and game folders (plain, or packed with zstd or LZ4).
+Other formats, such as exFAT images, are obsolete and will not be supported.
 
 ## How to
 
-1. [ampr-emu-ng](https://github.com/quer3q/ampr-emu-ng) comes bundled and is installed into
-   `/data/krakenmount/ampr/` at start. To run another build, put its `libSceAmpr.sprx` there; it is
-   kept until you delete it.
-2. Put each game in a scan root: `/data/homebrew`, `/data/etaHEN/games`, or `homebrew`,
-   `etaHEN/games` or the root of a USB drive. A `.pkg` must be a plaintext debug FPKG from
-   dump-forge. A folder needs `eboot.bin` and `sce_sys/param.json`. Backports go in
-   `<scan root>/backports/<TITLE_ID>*`.
-3. Download `kraken-mount.elf` from [Releases](https://github.com/quer3q/kraken-mount/releases)
-   and send it once to the ELF loader (elfldr, port 9021):
-   `nc -w 3 <ps5-ip> 9021 < kraken-mount.elf`. It saves a copy on the console, and from then on
-   the Kraken Mount tile on the home screen starts it (elfldr must be running).
-4. Each game gets a "<name> registered" notification and its own home-screen tile.
-5. Open the Kraken Mount tile, or `http://<ps5-ip>:8097/` from a computer, to see the games,
-   rebuild or delete them, change settings and read the log.
+1. Download `kraken-mount.elf` from [Releases](https://github.com/quer3q/kraken-mount/releases)
+   and send it to your jailbroken PS5 with the ELF loader (elfldr, port 9021) or payload-manager:
+   `nc -w 3 <ps5-ip> 9021 < kraken-mount.elf`. kstuff must be loaded, and ShadowMount+ must not be
+   running: Kraken Mount waits until both are true.
+2. Put each game in a scan root:
+   - internal SSD: `/data/homebrew`, `/data/etaHEN/games`
+   - M.2 or extended drive (`/mnt/ext0`, `/mnt/ext1`): `homebrew`, `etaHEN/games` or the drive root
+   - USB drive (`/mnt/usb0` to `/mnt/usb7`): `homebrew`, `etaHEN/games` or the drive root
+3. Each game gets a "<name> registered" notification and its own home-screen tile.
+
+[ampr-emu-ng](https://github.com/quer3q/ampr-emu-ng) comes bundled and is installed into
+`/data/krakenmount/ampr/` at start. To run another build, put its `libSceAmpr.sprx` there; it is
+kept until you delete it.
 
 Caches live in `/data/krakenmount/caches/<TITLE_ID>`, settings in
 `/data/krakenmount/config.toml` and the log in `/data/krakenmount/kraken.log`.
 
-### Source filters (new, opt-in)
+### Source format filter (fork, opt-in)
 
-The web UI's Settings page now has **Game source formats**: **All: PKG and folders** (default),
-**Only PKG**, or **Only game folders**. You can also set `source_mode = "pkg"` (or `"folder"`)
-in `/data/krakenmount/config.toml`. The default `"all"` preserves existing behavior.
+In Settings, use **All: PKG and folders** (default), **Only PKG**, or **Only game folders**.
+The config key `source_mode = "all" | "pkg" | "folder"` controls discovery only; games and
+cached data are not deleted when toggling the filter. **PKG backports in folders still work
+when Only PKG is selected.** Cache Purge is disabled while filters hide games.
 
-The filter changes **future discovery only**; it does not delete the original files, saved
-games, previously registered tiles or cached data. PKG backports remain in
-`<scan root>/backports/<TITLE_ID>*` even when you choose **Only PKG**.
-**Cache purge is disabled while a source filter is active**, so caches for hidden games are
-not deleted by mistake. Return to **All** to use Purge. A filter is not a per-game
-mount/unmount operation.
-
-**PT-BR:** Em *Configurações → Formatos de jogos detectados*, escolha
-*Todos: PKG e pastas*, *Somente PKG* ou *Somente pastas de jogos*.
-O modo *Somente PKG* continua aceitando backports em pasta. Nenhum arquivo original
-é excluído ao mudar essa opção.
+**PT-BR:** Em *Configurações → Formatos de jogos detectados*, selecione
+*Todos*, *Somente PKG* ou *Somente pastas*. O backport em pasta continua funcionando.
 
 To build it yourself: `ps5/build.sh` (needs Docker), output `target/ps5/kraken-mount.elf`.
 

@@ -10,6 +10,7 @@ pub struct Settings {
     pub scan_paths: Vec<String>,
     pub source_mode: SourceMode,
     pub inject_ampr: bool,
+    pub ampr_auto_update: bool,
     pub backports: bool,
     pub scan_interval_secs: u64,
     pub low_space_gb: u64,
@@ -25,6 +26,7 @@ impl Default for Settings {
             scan_paths: Vec::new(),
             source_mode: SourceMode::All,
             inject_ampr: true,
+            ampr_auto_update: true,
             backports: true,
             scan_interval_secs: 10,
             low_space_gb: 20,
@@ -38,8 +40,9 @@ impl Default for Settings {
 
 const HELP: &[(&str, &str)] = &[
     ("scanpath", "replaces the default scan roots (/data/homebrew, /data/etaHEN/games, <drive>/homebrew, ...)"),
-    ("source_mode", "all = detect PKGs and folders (default); pkg = PKGs only; folder = game folders only. Backports remain independent."),
+    ("source_mode", "all = scan PKGs and folders (default); pkg = only PKGs; folder = only game folders (backports unchanged)"),
     ("inject_ampr", "true = copy /data/krakenmount/ampr/* on top of every game's fakelib (a change only refreshes fakelib/)"),
+    ("ampr_auto_update", "true = once per start, download a newer ampr-emu-ng release from GitHub (a hand-placed libSceAmpr.sprx is kept)"),
     ("backports", "true = apply backports/<TID>* from the game's scan root, then the other roots, then /data/homebrew"),
     ("scan_interval_seconds", "scan loop period, 1..3600"),
     ("low_space_gb", "warn when /data free space is below this"),
@@ -74,6 +77,7 @@ fn set(s: &mut Settings, key: &str, v: &str) -> Result<(), String> {
         "scanpath" => return Err(format!("expected an absolute path, got {v:?}")),
         "source_mode" => s.source_mode = SourceMode::parse(v).map_err(str::to_owned)?,
         "inject_ampr" => s.inject_ampr = flag(v)?,
+        "ampr_auto_update" => s.ampr_auto_update = flag(v)?,
         // Removed setting (the game's fakelib is always used in full): ignored, dropped on the next save.
         "game_fakelib" => {}
         "backports" => s.backports = flag(v)?,
@@ -233,6 +237,7 @@ fn render(s: &Settings) -> String {
             }
             "source_mode" => out += &format!("{k} = {}\n", toml_quote(s.source_mode.as_str())),
             "inject_ampr" => out += &format!("{k} = {}\n", s.inject_ampr),
+            "ampr_auto_update" => out += &format!("{k} = {}\n", s.ampr_auto_update),
             "backports" => out += &format!("{k} = {}\n", s.backports),
             "scan_interval_seconds" => out += &format!("{k} = {}\n", s.scan_interval_secs),
             "low_space_gb" => out += &format!("{k} = {}\n", s.low_space_gb),
@@ -278,6 +283,7 @@ pub fn to_json(s: &Settings) -> Value {
         "scanpath": s.scan_paths,
         "source_mode": s.source_mode.as_str(),
         "inject_ampr": s.inject_ampr,
+        "ampr_auto_update": s.ampr_auto_update,
         "backports": s.backports,
         "scan_interval_seconds": s.scan_interval_secs,
         "low_space_gb": s.low_space_gb,
