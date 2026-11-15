@@ -1,0 +1,26 @@
+name: removable-cache-guard
+
+on:
+  pull_request:
+    branches: [develop, main]
+    paths:
+      - 'src/removable_guard.rs'
+      - 'src/cache.rs'
+      - 'src/main.rs'
+      - '.github/workflows/removable-cache-guard.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  guard-unit-tests:
+    name: removable media preflight (native Rust)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test removable mount classifier
+        run: |
+          rustc --version
+          rustc --edition=2021 --deny warnings --test src/removable_guard.rs -o "$RUNNER_TEMP/removable-guard-tests"
+          "$RUNNER_TEMP/removable-guard-tests"
