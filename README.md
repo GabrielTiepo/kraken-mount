@@ -25,6 +25,13 @@ kept until you delete it.
 Caches live in `/data/krakenmount/caches/<TITLE_ID>`, settings in
 `/data/krakenmount/config.toml` and the log in `/data/krakenmount/kraken.log`.
 
+### Removable-drive cache safety (fork)
+
+The Cache Purge operation now **refuses to remove caches when a previously indexed
+source resides on a disconnected USB or extended drive**. Reconnect the drive
+before using Purge. This is a safety guard, not a guarantee against unplugging
+storage during an active operation. No package, backport or save is changed.
+
 To build it yourself: `ps5/build.sh` (needs Docker), output `target/ps5/kraken-mount.elf`.
 
 ## Thanks
