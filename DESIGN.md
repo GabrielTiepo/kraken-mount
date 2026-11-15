@@ -80,7 +80,20 @@ Invalid values are logged and replaced by the default. The web UI edits the same
   so ours wins over the game's own `libSceAmpr.sprx`. `.ampr` records what was copied (name, size,
   mtime); when the ampr dir or `inject_ampr` changes, or `.done` still has a `game_fakelib` other
   than `full` (a cache built before the setting was removed), `check` says `Fakelib` and only `fakelib/` is
-  recomposed (`refresh_fakelib`, which then rewrites `.done` with its own mtime), no extraction or re-registration. `fakelib/` is not in the AMPR index.
+  recomposed (`refresh_fakelib`), no AMPR index rewrite or re-registration. `fakelib/` is not in the AMPR index.
+  **L03 incremental backport library:** for newly built FPKG caches, `.done` also stores
+  `backport_data` and `backport_lib`: sorted lists of paths, sizes and nanosecond mtimes
+  for regular files outside/inside the backport's *selected* fakelib. If only that
+  library changes, `check` verifies the base stamp, the sampled `pkg_id`, the
+  unchanged game-file inventory, and the existing AMPR indexes before returning
+  `Fresh::Fakelib`. `refresh_fakelib` then recomposes only the library and
+  writes the new inventory; when the backport provides fakelib/fakelib2 itself,
+  it does not open or parse the FPKG. Legacy caches, missing snapshots, symlinks,
+  incompatible source mtimes, missing index, changed game-file names/sizes/mtimes
+  and errors **fall back to full rebuild**. These snapshots are not cryptographic
+  hashes; identical metadata after an in-place rewrite remains a limitation of
+  this and the original mtime-based freshness heuristic.
+  No change to index formats, 64 KiB reads, 256 KiB chunks or AMPR runtime.
 - A folder game's cache is only `fakelib/`, `.ampr`, `.built`, `.done`: nothing of the game is copied.
 - Fresh when `.done` exists, its JSON stamp equals the expected one
   (`{"v":1,"kind","source","size","backport","fakelib"}`; extra keys of an older stamp are ignored), and every input's
