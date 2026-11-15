@@ -447,6 +447,13 @@ button:disabled { opacity: 0.5; cursor: default; }
     <label class="row col"><span class="lbl" data-i18n="scanPaths">Scan paths</span>
       <span class="hint" data-i18n="scanPathsHint">One per line. Empty = default roots (/data/homebrew, /data/etaHEN/games, each drive's homebrew, etaHEN/games and root).</span>
       <textarea id="f_scanpath" spellcheck="false"></textarea></label>
+    <label class="row col"><span class="lbl" data-i18n="sourceMode">Game source formats</span>
+      <span class="hint" data-i18n="sourceModeHint">Filters future scans only; does not delete games or caches. Backports are still applied to accepted PKGs.</span>
+      <select id="f_source_mode" aria-label="Game source formats" data-i18n-aria="sourceMode">
+        <option value="all" data-i18n="sourceAll">All: PKG and folders</option>
+        <option value="pkg" data-i18n="sourcePkg">Only PKG</option>
+        <option value="folder" data-i18n="sourceFolder">Only game folders</option>
+      </select></label>
     <label class="row"><span class="lbl" data-i18n="injectAmpr">Inject ampr-emu-ng into every game's fakelib</span><input type="checkbox" id="f_inject_ampr"></label>
     <label class="row"><span class="lbl" data-i18n="backports">Apply backports</span><input type="checkbox" id="f_backports"></label>
     <label class="row"><span class="lbl" data-i18n="scanInterval">Scan interval, seconds (1-3600)</span><input type="number" id="f_scan_interval_seconds" min="1" max="3600"></label>
@@ -578,6 +585,9 @@ var MSG = {
     scanPathsHint: "One per line. Empty = default roots (/data/homebrew, /data/etaHEN/games, each drive's homebrew, etaHEN/games and root).",
     injectAmpr: "Inject ampr-emu-ng into every game's fakelib",
     backports: 'Apply backports',
+    sourceMode: 'Game source formats',
+    sourceModeHint: 'Filters future scans only; does not delete games or caches. Backports are still applied to accepted PKGs.',
+    sourceAll: 'All: PKG and folders', sourcePkg: 'Only PKG', sourceFolder: 'Only game folders',
     scanInterval: 'Scan interval, seconds (1-3600)',
     lowSpaceGb: 'Low space warning, GB',
     notify: 'System notifications',
@@ -1047,6 +1057,9 @@ var MSG = {
     scanPathsHint: 'Um por linha. Vazio = raízes padrão (/data/homebrew, /data/etaHEN/games e, em cada drive, homebrew, etaHEN/games e a raiz).',
     injectAmpr: 'Injetar ampr-emu-ng na fakelib de cada jogo',
     backports: 'Aplicar backports',
+    sourceMode: 'Formatos de jogos detectados',
+    sourceModeHint: 'Filtra apenas novas varreduras; não exclui jogos nem caches. Backports continuam associados aos PKGs.',
+    sourceAll: 'Todos: PKG e pastas', sourcePkg: 'Somente PKG', sourceFolder: 'Somente pastas de jogos',
     scanInterval: 'Intervalo de varredura, segundos (1-3600)',
     lowSpaceGb: 'Aviso de pouco espaço, GB',
     notify: 'Notificações do sistema',
@@ -1856,12 +1869,14 @@ var NUMS = ['scan_interval_seconds', 'low_space_gb'];
 var settingsRequest = 0;
 function fillSettings(v) {
   $('f_scanpath').value = (v.scanpath || []).join('\n');
+  $('f_source_mode').value = v.source_mode || 'all';
   BOOLS.forEach(function (k) { $('f_' + k).checked = v[k] === true || v[k] === 1; });
   NUMS.forEach(function (k) { $('f_' + k).value = v[k] == null ? '' : v[k]; });
 }
 function readSettings() {
   var v = {
-    scanpath: $('f_scanpath').value.split('\n').map(function (x) { return x.trim(); }).filter(Boolean)
+    scanpath: $('f_scanpath').value.split('\n').map(function (x) { return x.trim(); }).filter(Boolean),
+    source_mode: $('f_source_mode').value
   };
   BOOLS.forEach(function (k) { v[k] = $('f_' + k).checked; });
   NUMS.forEach(function (k) { var n = parseInt($('f_' + k).value, 10); if (!isNaN(n)) v[k] = n; });
