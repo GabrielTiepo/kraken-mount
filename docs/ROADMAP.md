@@ -7,7 +7,7 @@
 | Lote | Tema | Estado | Dependência / gate |
 |---|---|---|---|
 | [L00](https://github.com/GabrielTiepo/kraken-mount/issues/2) | Baseline, CI, testes e build ELF | ☐ Pendente | Primeiro; manter referência ao ELF atual |
-| [L01](https://github.com/GabrielTiepo/kraken-mount/issues/3) | pt-BR, biblioteca, formatos PKG/pasta | ☐ Pendente | L00 |
+| [L01](https://github.com/GabrielTiepo/kraken-mount/issues/3) | pt-BR, biblioteca, formatos PKG/pasta | **Parcial — [PR #11](https://github.com/GabrielTiepo/kraken-mount/pull/11)**; CI/hardware pendentes | L00 |
 | [L02](https://github.com/GabrielTiepo/kraken-mount/issues/4) | Backport, fakelib e perfis por jogo | ☐ Pendente | L00 |
 | [L03](https://github.com/GabrielTiepo/kraken-mount/issues/5) | Cache incremental, atualização atômica e falhas USB | ☐ Pendente | L00; ideal antes de L06 |
 | [L04](https://github.com/GabrielTiepo/kraken-mount/issues/6) | Diagnóstico e A/B de desempenho no SSD SATA USB | ☐ Pendente | Baseline L00; recomendações somente com medição |
