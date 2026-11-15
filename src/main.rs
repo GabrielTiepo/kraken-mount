@@ -18,6 +18,7 @@ mod net;
 mod register;
 mod scan;
 mod storage;
+mod removable_guard;
 mod web;
 
 use cache::Fresh;

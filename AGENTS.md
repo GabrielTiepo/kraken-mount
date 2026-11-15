@@ -31,7 +31,8 @@ sandbox. Web UI on port 8097 (opened from the "Kraken Mount" home-screen tile).
 | `src/web.rs`, `src/ui.html` | HTTP server and the single-file UI |
 | `src/sys.rs` | log, toasts, mount syscalls, kstuff probe |
 | `src/net.rs` | HTTPS GET over the console's sceHttp/sceSsl (ampr-emu-ng auto-update) |
-| `src/diagnostics.rs` | RAM-only scan/cache build timers; not AMPR runtime metrics |
+| `src/diagnostics.rs` | RAM-only scan/cache timers; not AMPR runtime read timings |
+| `src/removable_guard.rs` | pure USB/ext mount checker for safe cache purge (L03) |
 | `src/i18n.rs` | toast texts in the console language (the UI's 11 languages) |
 | `crates/kraken-mount-pkg` | FPKG reader and its Kraken decoder (`decoder` module) |
 | `ps5/` | Docker build, linker, C shims (`compat.c` holds PS5 libc adapters) |
@@ -47,7 +48,8 @@ sandbox. Web UI on port 8097 (opened from the "Kraken Mount" home-screen tile).
 - The **payload** builds only for PS5/FreeBSD. The pure `kraken-mount-pkg` reader also has
   native host tests: `cargo test -p kraken-mount-pkg --lib --locked`. Synthetic FIH/CNT fixtures
   exercise error handling but **do not** prove end-to-end PFS/AMPR or game compatibility.
-- Diagnostics host tests: `rustc --edition=2021 --deny warnings --test src/diagnostics.rs -o /tmp/diag-tests && /tmp/diag-tests`; UI smoke: `node scripts/test-diagnostics-ui.cjs`.
+- USB guard host tests: `rustc --edition=2021 --deny warnings --test src/removable_guard.rs -o /tmp/removable-tests && /tmp/removable-tests`.
+- L04 host tests: `rustc --edition=2021 --deny warnings --test src/diagnostics.rs -o /tmp/diag-tests && /tmp/diag-tests`, UI smoke: `node scripts/test-diagnostics-ui.cjs`.
 - Changes to pure parser logic need native tests. `cargo check --workspace --locked --target
   x86_64-unknown-freebsd` remains mandatory for target compatibility. UI script: extract the
   `<script>` and run `node --check`.

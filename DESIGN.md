@@ -101,6 +101,7 @@ Invalid values are logged and replaced by the default. The web UI edits the same
   size only); folder = new stamp, `.done` mtime now. Anything else is Stale (a cache stamped before `pkg_id`/`folder_id`
   existed rebuilds once when its game moves).
 - Purge (settings): only allowed with `source_mode="all"`; the UI disables the action and both the API and scan worker enforce the guard to avoid deleting caches hidden by the filter.
+- Purge safety (L03): before any destructive cleanup, inspect each readable cache `.done` stamp and compare removable source mounts under `/mnt/usb0..7` or `/mnt/ext0..1` with mounted aliases. If any cached source's volume is absent, abort the entire purge (WouldBlock) without deleting caches. Unreadable/malformed stamps also fail closed; caches without stamps are not covered. This is a preflight, not a guarantee against an unplug during the purge itself.
 - Purge (settings): delete caches of titles not in the library (`register::unmount_title` first;
   a dir whose unmount fails is skipped and logged), empty and rebuild the rest.
 
