@@ -44,6 +44,8 @@ pub struct State {
     pub work: Mutex<()>,
     pub low_space: AtomicBool,
     pub cache_total: Mutex<u64>,
+    /// RAM-only measurements of management operations; never reports AMPR runtime I/O.
+    pub diagnostics: Mutex<crate::diagnostics::Diagnostics>,
     /// Title ids registered by this run or with a built cache; launch::watch overlays only these.
     pub titles: Arc<Mutex<HashSet<String>>>,
     /// Title ids with a live game session (launch::watch); the scan loop pauses while non-empty.
@@ -64,6 +66,7 @@ impl State {
             work: Mutex::new(()),
             low_space: AtomicBool::new(false),
             cache_total: Mutex::new(0),
+            diagnostics: Mutex::new(crate::diagnostics::Diagnostics::default()),
             titles: Arc::new(Mutex::new(HashSet::new())),
             running: Arc::new(Mutex::new(HashSet::new())),
             rescan: Mutex::new(false),
@@ -401,6 +404,20 @@ fn api_state(state: &State) -> Vec<u8> {
     let tail = &lines[lines.len().saturating_sub(LOG_LINES)..];
     let mut running: Vec<String> = state.running.lock().unwrap().iter().cloned().collect();
     running.sort();
+    let diagnostics = state.diagnostics.lock().unwrap().clone();
+    let scan_metrics = diagnostics.scan.as_ref().map(|scan| serde_json::json!({
+        "elapsed_ms": scan.elapsed_ms,
+        "games": scan.games,
+        "duplicates": scan.duplicates,
+        "errors": scan.errors,
+    }));
+    let build_metrics: Vec<_> = diagnostics.builds.iter().map(|build| serde_json::json!({
+        "title_id": build.title_id,
+        "drive": build.drive,
+        "kind": build.kind,
+        "elapsed_ms": build.elapsed_ms,
+        "success": build.success,
+    })).collect();
     let v = serde_json::json!({
         "version": env!("CARGO_PKG_VERSION"),
         "busy": state.busy.load(Ordering::SeqCst),
@@ -409,6 +426,11 @@ fn api_state(state: &State) -> Vec<u8> {
         "running": running,
         "games": games,
         "drives": drives,
+        "diagnostics": {
+            "scope": "management",
+            "scan": scan_metrics,
+            "builds": build_metrics,
+        },
         "cache": {
             "path": cache::CACHES,
             "size": *state.cache_total.lock().unwrap(),
