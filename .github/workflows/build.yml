@@ -50,6 +50,8 @@ jobs:
           sed -n '/^<script>$/,/^<\/script>$/p' src/ui.html | sed '1d;$d' > "$RUNNER_TEMP/ui.js"
           test -s "$RUNNER_TEMP/ui.js"
           node --check "$RUNNER_TEMP/ui.js"
+      - name: Settings UI contract smoke tests
+        run: node scripts/test-source-settings.cjs
 
   payload:
     name: build payload
