@@ -42,9 +42,15 @@ sandbox. Web UI on port 8097 (opened from the "Kraken Mount" home-screen tile).
 - Payload: `ps5/build.sh` (Docker, two stages: stage 1 is the saved copy, stage 2 embeds it) ->
   `target/ps5/kraken-mount.elf`. A link error like `undefined symbol: X@FBSD_1.0` means the PS5 libc
   lacks that versioned symbol: add an adapter in `ps5/compat.c` (see `statfs`, `getmntinfo`).
-- The crate builds only for the PS5/FreeBSD target, so there is no `cargo test`. For non-trivial logic,
-  copy the pure functions into a scratch file, compile with `rustc` on the host and assert on a fake
-  directory (done for the cache rebuild logic). UI script: extract the `<script>` and run `node --check`.
+- The **payload** builds only for PS5/FreeBSD. The pure `kraken-mount-pkg` reader also has
+  native host tests: `cargo test -p kraken-mount-pkg --lib --locked`. Synthetic FIH/CNT fixtures
+  exercise error handling but **do not** prove end-to-end PFS/AMPR or game compatibility.
+- Changes to pure parser logic need native tests. `cargo check --workspace --locked --target
+  x86_64-unknown-freebsd` remains mandatory for target compatibility. UI script: extract the
+  `<script>` and run `node --check`.
+- The CI runs fast checks/tests **before** the Docker PS5 ELF build; changes to runtime behavior
+  must still be tested on real hardware and labelled NOT HOMOLOGATED when not tested.
+  See `docs/L00-BASELINE.md` and `docs/PLANO-KRAKEN-MOUNT-SATA-SSD.md`.
 
 ## Rules
 

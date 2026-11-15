@@ -444,3 +444,6 @@ pub mod probe {
         }
     }
 }
+
+#[cfg(test)]
+mod tests;
