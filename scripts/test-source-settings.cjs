@@ -24,6 +24,7 @@ const original = {
   scanpath: ['/mnt/usb0/homebrew'],
   source_mode: 'pkg',
   inject_ampr: true,
+  ampr_auto_update: true,
   backports: true,
   notify: true,
   log: true,
