@@ -376,6 +376,58 @@ pub enum Fresh {
 
 /// `.done` key (pkg only, not part of `stamp`): `pkg_id` of the .pkg the cache was built from.
 const PKG_ID: &str = "pkg_id";
+/// Incremental backport metadata. Only populated for PKG caches with a readable, regular-file
+/// overlay. Old caches intentionally lack the keys and take the original full-rebuild path.
+const BP_DATA: &str = "backport_data";
+const BP_LIB: &str = "backport_lib";
+const MAX_BP_FILES: usize = 4096;
+
+/// Snapshot of the backport's game files and *selected* fakelib/fakelib2. This only captures
+/// paths, sizes and nanosecond mtimes: it is a change detector, NOT a content hash. Invalid
+/// or symlinked sources skip the optimization, never prevent a regular build.
+fn backport_snapshot(src: &Source) -> Option<(serde_json::Value, serde_json::Value)> {
+    let root = src.backport.as_ref()?;
+    let game = crate::backport_inventory::game_files(root).ok()?;
+    let lib = match bp_lib(src) {
+        Some(path) => crate::backport_inventory::lib_files(&path).ok()?,
+        None => Vec::new(),
+    };
+    if game.len() > MAX_BP_FILES || lib.len() > MAX_BP_FILES {
+        return None;
+    }
+    Some((serde_json::json!(game), serde_json::json!(lib)))
+}
+
+/// The only safe incremental case for now: the original pkg and every non-library backport
+/// file are unchanged, while the selected library or its contents changed. The AMPR index
+/// only indexes game files (the library is a launch-time overlay), so no index rewrite is
+/// needed. Any uncertainty, missing old metadata or missing index falls back to rebuilding.
+fn backport_lib_only(src: &Source, old: &serde_json::Value, new: &serde_json::Value, done_mtime: SystemTime) -> bool {
+    if src.kind != Kind::Pkg || src.backport.is_none() {
+        return false;
+    }
+    for key in ["v", "kind", "source", "size", "backport"] {
+        if old.get(key) != new.get(key) {
+            return false;
+        }
+    }
+    let (Some(saved_game), Some(saved_lib)) = (old.get(BP_DATA), old.get(BP_LIB)) else {
+        return false;
+    };
+    let d = dir(&src.title_id);
+    if [BUILT, IMAGE_FILE, "ampr_emu.index", "ampr_assets.index"]
+        .iter().any(|name| !d.join(name).is_file()) {
+        return false;
+    }
+    if !fs::metadata(&src.path).and_then(|m| m.modified()).is_ok_and(|time| time < done_mtime) {
+        return false;
+    }
+    if !old[PKG_ID].as_str().is_some_and(|expected| pkg_id(&src.path).ok().as_deref() == Some(expected)) {
+        return false;
+    }
+    let Some((game, lib)) = backport_snapshot(src) else { return false };
+    saved_game == &game && (saved_lib != &lib || old.get("fakelib") != new.get("fakelib"))
+}
 const ID_SPAN: usize = 0x10000;
 
 /// A .pkg's identity: FNV-1a 64 of its size, first 64 KiB (the FIH header), the 4 KiB CNT header
@@ -503,6 +555,12 @@ pub fn check(src: &Source, s: &Settings) -> Fresh {
             }
         }
     }
+    // Do not reopen/decode the FPKG or regenerate AMPR indices for a backport library change:
+    // fakelib/ is not in those indices. This check verifies base package identity and that all
+    // backport GAME files still have the same metadata. Legacy caches safely rebuild once.
+    if backport_lib_only(src, &old, &new, done_mtime) {
+        return Fresh::Fakelib("backport library changed (index unchanged)".into());
+    }
     for (k, v) in new.as_object().into_iter().flatten() {
         if old.get(k) != Some(v) {
             return Fresh::Stale(format!("{k} changed"));
@@ -608,14 +666,20 @@ fn compose_fakelib(src: &Source, s: &Settings, pkg: Option<(&Io, &Pkg)>) -> Resu
 /// starts mid-refresh (the scan loop is paused while one runs).
 pub fn refresh_fakelib(src: &Source, s: &Settings) -> Result<()> {
     log!("{}: refreshing {}", src.title_id, dir(&src.title_id).join("fakelib").display());
-    let pkg = if src.kind == Kind::Pkg { Some(open(&src.path)?) } else { None };
+    // When the backport supplies fakelib2/ or fakelib/, the game's own libraries are never
+    // used. Avoid opening and parsing a potentially huge FPKG just to refresh that overlay.
+    let pkg = if src.kind == Kind::Pkg && bp_lib(src).is_none() {
+        Some(open(&src.path)?)
+    } else {
+        None
+    };
+    // Stamp time is captured BEFORE copying. If a source changes mid-refresh it is detected
+    // on the next scan, instead of leaving a permanent stale/future-mtime rebuild loop.
+    let started = SystemTime::now();
     compose_fakelib(src, s, pkg.as_ref().map(|(io, p)| (io, p)))
         .and_then(|()| {
-            // check() matched the stamp and inputs: the current stamp with `.done`'s own mtime
-            // (drops a legacy game_fakelib key, keeps the input checks).
             let d = dir(&src.title_id);
-            let mtime = fs::metadata(d.join(DONE))?.modified()?;
-            write_done(&d, src, s, mtime)
+            write_done(&d, src, s, started)
         })
         .map_err(|e| {
             let e = Error::new(e.kind(), format!("{} ({}): fakelib refresh: {e}", src.title_id, src.path.display()));
@@ -667,6 +731,12 @@ fn write_done(dir: &Path, src: &Source, s: &Settings, start: SystemTime) -> Resu
     let mut st = stamp(src, s);
     st[if src.kind == Kind::Pkg { PKG_ID } else { FOLDER_ID }] =
         if src.kind == Kind::Pkg { pkg_id(&src.path)? } else { folder_id(src, s) }.into();
+    if src.kind == Kind::Pkg {
+        if let Some((game, lib)) = backport_snapshot(src) {
+            st[BP_DATA] = game;
+            st[BP_LIB] = lib;
+        }
+    }
     fs::write(&done, st.to_string())?;
     File::options().write(true).open(&done)?.set_modified(start)
 }
