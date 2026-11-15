@@ -1,12 +1,14 @@
 //! Settings from /data/krakenmount/config.toml (DESIGN.md "Settings").
 //! ponytail: a flat TOML subset (key = string | bool | integer | array of strings, # comments),
 //! no tables; a toml crate when the file needs more.
+use crate::source_mode::SourceMode;
 use serde_json::{json, Value};
 pub const CONFIG_PATH: &str = "/data/krakenmount/config.toml";
 
 #[derive(Clone, PartialEq, Debug)]
 pub struct Settings {
     pub scan_paths: Vec<String>,
+    pub source_mode: SourceMode,
     pub inject_ampr: bool,
     pub backports: bool,
     pub scan_interval_secs: u64,
@@ -21,6 +23,7 @@ impl Default for Settings {
     fn default() -> Self {
         Settings {
             scan_paths: Vec::new(),
+            source_mode: SourceMode::All,
             inject_ampr: true,
             backports: true,
             scan_interval_secs: 10,
@@ -35,6 +38,7 @@ impl Default for Settings {
 
 const HELP: &[(&str, &str)] = &[
     ("scanpath", "replaces the default scan roots (/data/homebrew, /data/etaHEN/games, <drive>/homebrew, ...)"),
+    ("source_mode", "all = detect PKGs and folders (default); pkg = PKGs only; folder = game folders only. Backports remain independent."),
     ("inject_ampr", "true = copy /data/krakenmount/ampr/* on top of every game's fakelib (a change only refreshes fakelib/)"),
     ("backports", "true = apply backports/<TID>* from the game's scan root, then the other roots, then /data/homebrew"),
     ("scan_interval_seconds", "scan loop period, 1..3600"),
@@ -68,6 +72,7 @@ fn set(s: &mut Settings, key: &str, v: &str) -> Result<(), String> {
             }
         }
         "scanpath" => return Err(format!("expected an absolute path, got {v:?}")),
+        "source_mode" => s.source_mode = SourceMode::parse(v).map_err(str::to_owned)?,
         "inject_ampr" => s.inject_ampr = flag(v)?,
         // Removed setting (the game's fakelib is always used in full): ignored, dropped on the next save.
         "game_fakelib" => {}
@@ -226,6 +231,7 @@ fn render(s: &Settings) -> String {
                 let items: Vec<String> = s.scan_paths.iter().map(|p| toml_quote(p)).collect();
                 out += &format!("scanpath = [{}]\n", items.join(", "));
             }
+            "source_mode" => out += &format!("{k} = {}\n", toml_quote(s.source_mode.as_str())),
             "inject_ampr" => out += &format!("{k} = {}\n", s.inject_ampr),
             "backports" => out += &format!("{k} = {}\n", s.backports),
             "scan_interval_seconds" => out += &format!("{k} = {}\n", s.scan_interval_secs),
@@ -270,6 +276,7 @@ pub fn save(s: &Settings) -> std::io::Result<()> {
 pub fn to_json(s: &Settings) -> Value {
     json!({
         "scanpath": s.scan_paths,
+        "source_mode": s.source_mode.as_str(),
         "inject_ampr": s.inject_ampr,
         "backports": s.backports,
         "scan_interval_seconds": s.scan_interval_secs,
