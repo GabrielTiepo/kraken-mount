@@ -415,7 +415,8 @@ fn backport_lib_only(src: &Source, old: &serde_json::Value, new: &serde_json::Va
         return false;
     };
     let d = dir(&src.title_id);
-    if [BUILT, IMAGE_FILE, "ampr_emu.index", "ampr_assets.index"]
+    if [BUILT, IMAGE_FILE, "ampr_emu.index", "ampr_assets.index",
+        "eboot.bin", "sce_sys/param.json"]
         .iter().any(|name| !d.join(name).is_file()) {
         return false;
     }
