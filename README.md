@@ -24,6 +24,24 @@ It mounts debug FPKG `.pkg` files, game folders (plain, or packed with zstd or L
 Caches live in `/data/krakenmount/caches/<TITLE_ID>`, settings in
 `/data/krakenmount/config.toml` and the log in `/data/krakenmount/kraken.log`.
 
+### Source filters (new, opt-in)
+
+The web UI's Settings page now has **Game source formats**: **All: PKG and folders** (default),
+**Only PKG**, or **Only game folders**. You can also set `source_mode = "pkg"` (or `"folder"`)
+in `/data/krakenmount/config.toml`. The default `"all"` preserves existing behavior.
+
+The filter changes **future discovery only**; it does not delete the original files, saved
+games, previously registered tiles or cached data. PKG backports remain in
+`<scan root>/backports/<TITLE_ID>*` even when you choose **Only PKG**.
+**Cache purge is disabled while a source filter is active**, so caches for hidden games are
+not deleted by mistake. Return to **All** to use Purge. A filter is not a per-game
+mount/unmount operation.
+
+**PT-BR:** Em *Configurações → Formatos de jogos detectados*, escolha
+*Todos: PKG e pastas*, *Somente PKG* ou *Somente pastas de jogos*.
+O modo *Somente PKG* continua aceitando backports em pasta. Nenhum arquivo original
+é excluído ao mudar essa opção.
+
 To build it yourself: `ps5/build.sh` (needs Docker), output `target/ps5/kraken-mount.elf`.
 
 ## Thanks
