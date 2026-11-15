@@ -1,4 +1,5 @@
 //! Game discovery over the scan roots (DESIGN.md).
+use crate::source_mode::SourceMode;
 use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::io::{self, Error, ErrorKind};
@@ -139,7 +140,7 @@ fn scan_error(result: &mut ScanResult, path: PathBuf, error: impl std::fmt::Disp
 /// Last logged scan error per path.
 static LOGGED: OnceLock<Mutex<HashMap<PathBuf, String>>> = OnceLock::new();
 
-pub fn scan(roots: &[String], backports: bool) -> ScanResult {
+pub fn scan(roots: &[String], backports: bool, source_mode: SourceMode) -> ScanResult {
     let mut result = ScanResult { games: Vec::new(), duplicates: Vec::new(), errors: Vec::new() };
     // Title id -> its index in `result.games`.
     let mut seen: HashMap<String, usize> = HashMap::new();
@@ -172,7 +173,7 @@ pub fn scan(roots: &[String], backports: bool) -> ScanResult {
                     continue;
                 }
             };
-            let (kind, size, param) = if metadata.is_file()
+            let (kind, size, param) = if source_mode.allows_pkg() && metadata.is_file()
                 && path.extension().is_some_and(|e| e.eq_ignore_ascii_case("pkg")) {
                 let mtime = match metadata.modified() {
                     Ok(mtime) => mtime,
@@ -186,7 +187,7 @@ pub fn scan(roots: &[String], backports: bool) -> ScanResult {
                     None => pkg_param(&path, metadata.len(), mtime),
                 };
                 (Kind::Pkg, metadata.len(), param)
-            } else if metadata.is_dir() && path.file_name().is_some_and(|n| n != "backports")
+            } else if source_mode.allows_folder() && metadata.is_dir() && path.file_name().is_some_and(|n| n != "backports")
                 && path.join("eboot.bin").is_file() && path.join("sce_sys/param.json").is_file() {
                 let packing = if path.join("ampr_zstd.index").is_file() {
                     Packing::Zstd
