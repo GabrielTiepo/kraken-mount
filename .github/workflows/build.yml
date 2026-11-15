@@ -45,6 +45,10 @@ jobs:
         run: |
           rustc --edition=2021 --deny warnings --test src/source_mode.rs -o "$RUNNER_TEMP/source-mode-tests"
           "$RUNNER_TEMP/source-mode-tests"
+      - name: Backport inventory tests (native Linux)
+        run: |
+          rustc --edition=2021 --deny warnings --test src/backport_inventory.rs -o "$RUNNER_TEMP/backport-inventory-tests"
+          "$RUNNER_TEMP/backport-inventory-tests"
       - name: Management diagnostics tests (native Linux)
         run: |
           rustc --edition=2021 --deny warnings --test src/diagnostics.rs -o "$RUNNER_TEMP/diagnostics-tests"
