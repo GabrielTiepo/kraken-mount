@@ -32,12 +32,14 @@ Default scan roots: SMP `SM_DEFAULT_SCAN_PATHS_INITIALIZER` order, only for driv
 (`/data/homebrew`, `/data/etaHEN/games`, ext `homebrew`/`etaHEN/games`, usb `homebrew`, usb `etaHEN/games`,
 usb roots, ext roots). `scanpath=` lines in config replace them.
 A dir named `backports` in a scan root is never a game.
+The optional `source_mode` filter applies **before** opening any PKG or reading folder metadata: `all` (default) scans both, `pkg` only FPKG game sources, and `folder` only game folders. Backport directories remain discoverable for accepted games independently of this filter. Filtering does **not** delete source games, registered tiles, or caches; it only changes which sources appear in subsequent scans. The existing duplicate-title rule (folder wins over pkg when both are enabled) remains unchanged in this increment.
 
 ## Settings (`src/config.rs`, file `/data/krakenmount/config.toml`)
 A flat TOML subset: `key = value` with strings, `true`/`false`, integers and arrays of strings; `#` comments.
 | Key | Default | Meaning |
 |---|---|---|
 | `scanpath` | (defaults above) | array of paths; replaces the default scan roots |
+| `source_mode` | `"all"` | `"all"`, `"pkg"` or `"folder"` (game-source discovery only; backport folders stay eligible for PKGs) |
 | `inject_ampr` | true | copy `/data/krakenmount/ampr/*` on top of every game's fakelib (a change only refreshes `fakelib/`) |
 | `backports` | true | apply `<scan root>/backports/<TID>*` |
 | `scan_interval_seconds` | 10 | scan loop period (1..3600) |
@@ -94,6 +96,7 @@ Invalid values are logged and replaced by the default. The web UI edits the same
   the file name changed, `.done` mtime now, extracted files and indexes kept (ng checks the pkg's
   size only); folder = new stamp, `.done` mtime now. Anything else is Stale (a cache stamped before `pkg_id`/`folder_id`
   existed rebuilds once when its game moves).
+- Purge (settings): only permitted when `source_mode = "all"`; the API refuses purge with HTTP 409 and the UI disables the button for a filtered library, preventing the removal of caches hidden by a source filter. The scan worker rechecks the mode before any queued purge.
 - Purge (settings): delete caches of titles not in the library (`register::unmount_title` first;
   a dir whose unmount fails is skipped and logged), empty and rebuild the rest.
 
@@ -145,10 +148,16 @@ No overlay when neither layer applies.
 
 ## Module interfaces (contract between modules; keep these names)
 ```rust
+// source_mode.rs
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum SourceMode { #[default] All, Pkg, Folder }
+impl SourceMode { pub const fn as_str(self) -> &'static str; pub fn parse(value: &str) -> Result<Self, &'static str>;
+  pub const fn allows_pkg(self) -> bool; pub const fn allows_folder(self) -> bool; }
+
 // config.rs
 pub const CONFIG_PATH: &str = "/data/krakenmount/config.toml";
 #[derive(Clone, PartialEq, Debug)]
-pub struct Settings { pub scan_paths: Vec<String>, pub inject_ampr: bool,
+pub struct Settings { pub scan_paths: Vec<String>, pub source_mode: SourceMode, pub inject_ampr: bool,
   pub backports: bool, pub scan_interval_secs: u64, pub low_space_gb: u64, pub notify: bool, pub log: bool, pub debug: bool }
 impl Default for Settings
 pub fn load() -> Settings;                       // creates the file with defaults when missing
@@ -172,7 +181,7 @@ pub struct Source { pub path: std::path::PathBuf, pub kind: Kind, pub title_id: 
   pub version: String, /* param.json contentVersion, or empty */
   pub drive: String, pub size: u64 /* pkg file size; folder: 0 */, pub backport: Option<std::path::PathBuf> }
 pub struct ScanResult { pub games: Vec<Source>, pub duplicates: Vec<Source>, pub errors: Vec<(std::path::PathBuf, String)> }
-pub fn scan(roots: &[String], backports: bool) -> ScanResult;  // memoizes pkg param reads by (path, size, mtime)
+pub fn scan(roots: &[String], backports: bool, source_mode: SourceMode) -> ScanResult;  // memoizes pkg param reads by (path, size, mtime)
 pub fn parse_param(json: &[u8]) -> std::io::Result<(String, String, String)>; // (title_id, title_name, version)
 pub fn valid_tid(t: &str) -> bool;
 
