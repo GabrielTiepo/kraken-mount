@@ -10,7 +10,7 @@
 | [L01](https://github.com/GabrielTiepo/kraken-mount/issues/3) | pt-BR, biblioteca, formatos PKG/pasta | **Parcial — [PR #11](https://github.com/GabrielTiepo/kraken-mount/pull/11)**; CI/hardware pendentes | L00 |
 | [L02](https://github.com/GabrielTiepo/kraken-mount/issues/4) | Backport, fakelib e perfis por jogo | ☐ Pendente | L00 |
 | [L03](https://github.com/GabrielTiepo/kraken-mount/issues/5) | Cache incremental, atualização atômica e falhas USB | ☐ Pendente | L00; ideal antes de L06 |
-| [L04](https://github.com/GabrielTiepo/kraken-mount/issues/6) | Diagnóstico e A/B de desempenho no SSD SATA USB | ☐ Pendente | Baseline L00; recomendações somente com medição |
+| [L04](https://github.com/GabrielTiepo/kraken-mount/issues/6) | Diagnóstico e A/B de desempenho no SSD SATA USB | **Parcial — [PR #12](https://github.com/GabrielTiepo/kraken-mount/pull/12)**; CI/hardware pendentes | Baseline L00; recomendações somente com medição |
 | [L05](https://github.com/GabrielTiepo/kraken-mount/issues/7) | Compatibilidade FPKG e arquivos esparsos | ☐ Pendente | Fixtures L00 e estabilidade do cache |
 | [L06](https://github.com/GabrielTiepo/kraken-mount/issues/8) | FPKG base + segundo PKG (FIH/LIH) | ☐ Pendente | L03/L05; investigar runtime AMPR |
 | [L07](https://github.com/GabrielTiepo/kraken-mount/issues/9) | Homologação geral, beta ELF e rollout | ☐ Pendente | L00–L06 implementados conforme escopo |

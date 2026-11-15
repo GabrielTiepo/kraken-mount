@@ -41,17 +41,23 @@ jobs:
         run: cargo check --workspace --locked --target x86_64-unknown-freebsd
       - name: Synthetic FIH/CNT parser tests (native Linux)
         run: cargo test -p kraken-mount-pkg --lib --locked
+      - name: Source-mode unit tests (native Linux, no PS5 dependencies)
+        run: |
+          rustc --edition=2021 --deny warnings --test src/source_mode.rs -o "$RUNNER_TEMP/source-mode-tests"
+          "$RUNNER_TEMP/source-mode-tests"
       - name: Management diagnostics tests (native Linux)
         run: |
           rustc --edition=2021 --deny warnings --test src/diagnostics.rs -o "$RUNNER_TEMP/diagnostics-tests"
           "$RUNNER_TEMP/diagnostics-tests"
-      - name: Diagnostics UI contract test
+      - name: Diagnostics UI contract smoke tests
         run: node scripts/test-diagnostics-ui.cjs
       - name: node --check (src/ui.html script)
         run: |
           sed -n '/^<script>$/,/^<\/script>$/p' src/ui.html | sed '1d;$d' > "$RUNNER_TEMP/ui.js"
           test -s "$RUNNER_TEMP/ui.js"
           node --check "$RUNNER_TEMP/ui.js"
+      - name: Settings UI contract smoke tests
+        run: node scripts/test-source-settings.cjs
 
   payload:
     name: build payload

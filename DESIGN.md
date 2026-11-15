@@ -20,7 +20,7 @@ and installed into `/data/krakenmount/ampr/` at start.
 |---|---|
 | `/data/krakenmount/config.toml` | settings (created with defaults on first start) |
 | `/data/krakenmount/caches/<TID>/` | per-game cache |
-| `/data/krakenmount/ampr.bundled` | `<len> <crc32>` of the bundled `libSceAmpr.sprx` last installed (outside `ampr/`, whose files all go into fakelib) |
+| `/data/krakenmount/ampr.bundled` | `<version> <len> <crc32>` of the `libSceAmpr.sprx` we last wrote, bundled or downloaded (v0.4.0 builds wrote `<len> <crc32>`: ours, version unknown; outside `ampr/`, whose files all go into fakelib) |
 | `/data/krakenmount/ampr/` | ampr-emu-ng files (`libSceAmpr.sprx`, ...), copied on top of every game's `fakelib/` in its cache (chmod 0777 at start; a `libkernel.sprx` there is never copied and logs a warning) |
 | `/data/krakenmount/kraken.log` | log (setting `log`); starts over past 1 MiB, no kept copy |
 | `/data/krakenmount/kraken-mount.elf` | self copy the tile starts (Dump Forge style, below) |
@@ -32,13 +32,19 @@ Default scan roots: SMP `SM_DEFAULT_SCAN_PATHS_INITIALIZER` order, only for driv
 (`/data/homebrew`, `/data/etaHEN/games`, ext `homebrew`/`etaHEN/games`, usb `homebrew`, usb `etaHEN/games`,
 usb roots, ext roots). `scanpath=` lines in config replace them.
 A dir named `backports` in a scan root is never a game.
+The optional `source_mode` filter is applied to scan discovery, not to backport lookup:
+`all` is the backwards-compatible default, `pkg` detects only FPKGs, and `folder`
+detects only game folders. It never deletes game sources, saves or caches. The existing
+folder-over-PKG tie-break rule still applies in `all` mode.
 
 ## Settings (`src/config.rs`, file `/data/krakenmount/config.toml`)
 A flat TOML subset: `key = value` with strings, `true`/`false`, integers and arrays of strings; `#` comments.
 | Key | Default | Meaning |
 |---|---|---|
 | `scanpath` | (defaults above) | array of paths; replaces the default scan roots |
+| `source_mode` | `"all"` | `"all"`, `"pkg"` or `"folder"`: filters game discovery, not backports |
 | `inject_ampr` | true | copy `/data/krakenmount/ampr/*` on top of every game's fakelib (a change only refreshes `fakelib/`) |
+| `ampr_auto_update` | true | once per start, download a newer ampr-emu-ng release from GitHub (a hand-placed `libSceAmpr.sprx` is kept) |
 | `backports` | true | apply `<scan root>/backports/<TID>*` |
 | `scan_interval_seconds` | 10 | scan loop period (1..3600) |
 | `low_space_gb` | 20 | warn when `/data` free space is below this |
@@ -94,13 +100,14 @@ Invalid values are logged and replaced by the default. The web UI edits the same
   the file name changed, `.done` mtime now, extracted files and indexes kept (ng checks the pkg's
   size only); folder = new stamp, `.done` mtime now. Anything else is Stale (a cache stamped before `pkg_id`/`folder_id`
   existed rebuilds once when its game moves).
+- Purge (settings): only allowed with `source_mode="all"`; the UI disables the action and both the API and scan worker enforce the guard to avoid deleting caches hidden by the filter.
 - Purge (settings): delete caches of titles not in the library (`register::unmount_title` first;
   a dir whose unmount fails is skipped and logged), empty and rebuild the rest.
 
 ## Flow (`src/main.rs`)
 Start: create dirs, load config, take port 8097 (asks an older copy to quit), install the bundled
 `libSceAmpr.sprx` when `ampr/libSceAmpr.sprx` is missing or matches `ampr.bundled` (an older bundled
-copy; a file put there by hand is kept), ampr chmod, web thread, klog thread when `debug`, then wait
+copy; a file put there by hand is kept; see Auto-update below), ampr chmod, web thread, klog thread when `debug`, then wait
 (2 s poll, one toast per reason, `waiting` in `/api/state` for the UI banner) until kstuff answers its KEKCALL_CHECK probe (`sys::kstuff_loaded`,
 SMP `sm_kstuff_is_loaded`) and no `shadowmountplus.elf` process runs, then the launch watcher thread. Loop every `scan_interval_seconds` or on
 wake: reload config, scan, then for each game: freshness check, build if stale or forced,
@@ -114,6 +121,20 @@ A moved game (`Fresh::Moved`, not forced): a folder's `/system_ex/app/<TID>` sta
 new folder first (`register::remount`, backport unionfs included, never MNT_FORCE), then
 `cache::relink`; logged with the title id and both paths, toast `i18n::moved`; then the usual
 fresh path. A failed relink or remount falls back to a rebuild.
+Auto-update (ampr-emu-ng): at start, when `ampr_auto_update` and `inject_ampr` are on, a background thread asks
+`https://api.github.com/repos/quer3q/ampr-emu-ng/releases/latest` (stable releases only; betas are
+pre-releases and skipped). When its `tag_name` is newer than the installed version, it downloads the
+asset `libSceAmpr.sprx` (size must equal the asset size, max 16 MiB, ELF or SELF magic), writes a temp
+file in `/data/krakenmount`, chmod 0777, renames it to `/data/krakenmount/ampr/libSceAmpr.sprx`, records
+it in `ampr.bundled` as `<tag> <len> <crc32>` and toasts `i18n::ampr_updated`. A copy we wrote (bundled
+or downloaded) is ours: the bundled copy replaces ours only when the bundled version is newer; a
+hand-placed file is kept by both, and ownership is checked again after the download. Network errors are
+logged and retried up to 3 times 20 s apart, then nothing until the next start. An install wakes the scan
+loop (fakelib refresh); one update runs at a time. Settings has "Update ampr-emu-ng now"
+(`POST /api/ampr/update`): forced, one attempt, installs the latest stable release whatever is
+installed; a hand-placed file is first moved to `/data/krakenmount/libSceAmpr.sprx.hand` (one backup,
+outside `ampr/`). HTTPS goes through the console's sceHttp/sceSsl with 4 built-in root CAs
+(from SMP).
 Running game: while `launch::watch` reports a live session (`running`), the loop does no
 scan/build/register/purge (a game starting mid-scan stops the scan before the next title);
 rescan/rebuild/purge requests stay queued and run after the game exits (2 s poll).
@@ -130,6 +151,9 @@ SMP port: copy `sce_sys` to `/user/app/<TID>/sce_sys` + `icon0.png`, appmeta, tr
 nullfs `app0 -> /system_ex/app/<TID>` (app0 = cache dir for FPKG, game folder for Folder),
 for a Folder with a backport a unionfs of the backport dir on top (SMP
 `mount_backport_overlay`), then `sceAppInstUtilAppInstallTitleDir` (fallback InstallAll).
+`/system_ex` is read-only unless etaHEN, SMP or kstuff-lite remounted it (elfldr does not): when
+`mkdir -p /system_ex/app/<TID>` fails with EROFS, register remounts it once like SMP `remount_system_ex`
+(`nmount` MNT_UPDATE of `/dev/ssd0.system_ex`) and retries. An existing title dir (EEXIST) needs no remount.
 
 ## Launch (`src/launch.rs`)
 As before (SMP sm_fakelib port): unionfs of `caches/<TID>/fakelib` (when non-empty) over the sandbox's
@@ -145,25 +169,24 @@ No overlay when neither layer applies.
 
 ## Module interfaces (contract between modules; keep these names)
 ```rust
+// source_mode.rs
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum SourceMode { #[default] All, Pkg, Folder }
+
+// diagnostics.rs
+#[derive(Clone, Debug, Default)]
+pub struct Diagnostics { pub scan: Option<ScanSample>, pub builds: Vec<BuildSample> }
+
 // config.rs
 pub const CONFIG_PATH: &str = "/data/krakenmount/config.toml";
 #[derive(Clone, PartialEq, Debug)]
-pub struct Settings { pub scan_paths: Vec<String>, pub inject_ampr: bool,
+pub struct Settings { pub scan_paths: Vec<String>, pub source_mode: SourceMode, pub inject_ampr: bool, pub ampr_auto_update: bool,
   pub backports: bool, pub scan_interval_secs: u64, pub low_space_gb: u64, pub notify: bool, pub log: bool, pub debug: bool }
 impl Default for Settings
 pub fn load() -> Settings;                       // creates the file with defaults when missing
 pub fn save(s: &Settings) -> std::io::Result<()>;
 pub fn to_json(s: &Settings) -> serde_json::Value;          // keys = config keys, scanpath = array
 pub fn from_json(v: &serde_json::Value) -> Result<Settings, String>;
-
-// diagnostics.rs (RAM-only management timers)
-#[derive(Clone, Debug, Default)]
-pub struct Diagnostics { pub scan: Option<ScanSample>, pub builds: Vec<BuildSample> }
-impl Diagnostics {
-    pub fn record_scan(&mut self, elapsed: std::time::Duration, games: usize, duplicates: usize, errors: usize);
-    pub fn record_build(&mut self, title_id: &str, drive: &str, kind: &'static str,
-        elapsed: std::time::Duration, success: bool);
-}
 
 // storage.rs
 pub struct Drive { pub mount: String, pub label: String, pub kind: &'static str /* internal|usb|ext */,
@@ -181,7 +204,7 @@ pub struct Source { pub path: std::path::PathBuf, pub kind: Kind, pub title_id: 
   pub version: String, /* param.json contentVersion, or empty */
   pub drive: String, pub size: u64 /* pkg file size; folder: 0 */, pub backport: Option<std::path::PathBuf> }
 pub struct ScanResult { pub games: Vec<Source>, pub duplicates: Vec<Source>, pub errors: Vec<(std::path::PathBuf, String)> }
-pub fn scan(roots: &[String], backports: bool) -> ScanResult;  // memoizes pkg param reads by (path, size, mtime)
+pub fn scan(roots: &[String], backports: bool, source_mode: SourceMode) -> ScanResult;  // memoizes pkg param reads by (path, size, mtime)
 pub fn parse_param(json: &[u8]) -> std::io::Result<(String, String, String)>; // (title_id, title_name, version)
 pub fn valid_tid(t: &str) -> bool;
 
@@ -216,35 +239,34 @@ pub fn uninstall(tid: &str) -> std::io::Result<()>;       // sceAppInstUtilAppUn
 
 // launch.rs (titles: overlay these; running: title ids with a live session, kept by the watcher)
 pub fn watch(titles: Arc<Mutex<HashSet<String>>>, running: Arc<Mutex<HashSet<String>>>);
+
+// net.rs (blocking GET over sceHttp/sceSsl, 4 pinned root CAs; Err on non-200, sce error or > max bytes)
+pub fn https_get(url: &str, max: usize) -> std::io::Result<Vec<u8>>;
 ```
 
-## Baseline diagnostics (`src/diagnostics.rs`)
+## Basic management diagnostics (`src/diagnostics.rs`)
 
-- Monotonic `Instant` measures the **total wall-clock time** of a whole `scan::scan` pass
-  and a `cache::build` operation, including filesystem and indexing overhead.
-- Samples are in RAM only, replaced each scan, and the **latest eight** cache builds are retained
-  in arrival order. They reset when the ELF restarts. No individual read tracing or log spam.
-- The API returns integer milliseconds (not guaranteed to be nonzero for very short calls)
-  and source mount `drive`; no per-title source file paths are added to the diagnostic payload.
-- This **does not** measure AMPR runtime I/O, USB-SATA throughput, page cache hit rate,
-  game FPS, 64 KiB page performance, or p95/p99. Do not use the numbers as evidence that
-  read-ahead or a new block size is faster. Those require a separate instrumented AMPR runtime
-  and A/B measurements on the same SSD and games.
-- The settings page displays a compact optional diagnostics panel, pt-BR for Portuguese
-  browser settings and English fallback otherwise.
+- Uses monotonic `Instant` wall-clock timings for `scan::scan` and `cache::build`.
+- Records the last scan and up to 8 cache builds in RAM, reset at process start.
+- Exposes aggregate timings and title/drive/operation result; does **not** add full source paths.
+- **Not** AMPR runtime block I/O, USB transfer rate, cache hit rate, p95/p99 or game FPS.
+- The settings UI shows a compact pt-BR panel, falling back to English in other locales.
 
 ## Web API (`src/web.rs`, port 8097, served to `src/ui.html`)
 - `GET /` ui.html (`__VERSION__` filled in); `GET /app-icon.png` the app icon (`ps5/icon0.png`);
-  `GET /bg.jpg` the background (`src/bg.jpg`); `GET /kraken.appcache` the AppCache manifest
-  (version + page hash, with `/bg.jpg` in its `CACHE` section). These four are `no-cache`, the rest `no-store`.
+  `GET /kraken.appcache` the AppCache manifest (version + page hash). These three are `no-cache`,
+  the rest `no-store`.
 - `GET /api/state`:
   `{version, busy, paused, waiting:"kstuff"|"shadowmount"|null, running:[TID], games:[{title_id, title_name, version, path, kind:"pkg"|"folder", packing:"plain"|"zstd"|"lz4"|null,
   drive, size, status:"pending"|"checking"|"building"|"ready"|"error"|"duplicate", error, cache_size, cache_built, backport}],
-  drives:[{mount, label, kind, total, free}],
-  diagnostics:{scope:"management",scan:{elapsed_ms,games,duplicates,errors}|null,
-    builds:[{title_id,drive,kind:"pkg"|"folder",elapsed_ms,success}]},
+  drives:[{mount, label, kind, total, free}], diagnostics:{scope:"management",
+  scan:{elapsed_ms,games,duplicates,errors}|null,
+  builds:[{title_id,drive,kind:"pkg"|"folder",elapsed_ms,success}]},
   cache:{path, size, free, low_space, ampr_present}, log:[last 100 lines of the last 64 KiB]}`
 - `GET /api/settings` -> settings JSON; `POST /api/settings` (JSON body) -> save, apply, rescan.
+- `GET /api/ampr` -> `{kind: "bundled"|"downloaded"|"hand"|"missing"|"error", version, updating}` of
+  `ampr/libSceAmpr.sprx`; `POST /api/ampr/update` -> forced update, answered when done: 200 + result text,
+  409 while one runs, 502 + error text.
 - `POST /api/rescan`, `POST /api/rebuild/<TID>`, `POST /api/rebuild-all`, `POST /api/purge` -> 204.
 - `GET /api/sizes/<TID>` -> `{game: u64, dlc: u64, save: u64|null, cache: u64}` in bytes,
   measured on request; 404 for an invalid or absent library title. Game is the pkg file or folder,

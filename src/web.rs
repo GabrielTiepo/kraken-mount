@@ -17,7 +17,6 @@ const MAX_REQUEST: usize = 16 << 10;
 const LOG_LINES: usize = 100;
 const UI: &str = include_str!("ui.html");
 const APP_ICON: &[u8] = include_bytes!("../ps5/icon0.png");
-const BG: &[u8] = include_bytes!("bg.jpg");
 
 #[derive(Clone)]
 pub struct Game {
@@ -44,7 +43,7 @@ pub struct State {
     pub work: Mutex<()>,
     pub low_space: AtomicBool,
     pub cache_total: Mutex<u64>,
-    /// RAM-only measurements of management operations; never reports AMPR runtime I/O.
+    /// RAM-only management operation durations, not AMPR runtime I/O timings.
     pub diagnostics: Mutex<crate::diagnostics::Diagnostics>,
     /// Title ids registered by this run or with a built cache; launch::watch overlays only these.
     pub titles: Arc<Mutex<HashSet<String>>>,
@@ -188,7 +187,7 @@ fn cached(ctype: &'static str, body: impl Into<Vec<u8>>) -> Reply {
 /// Its comment changes with the version and the page, so a new build's page is fetched again.
 fn appcache() -> String {
     let hash = UI.bytes().fold(0xcbf29ce484222325u64, |h, b| (h ^ b as u64).wrapping_mul(0x100000001b3));
-    format!("CACHE MANIFEST\n# {} {hash:016x}\nCACHE:\n/\n/app-icon.png\n/bg.jpg\nNETWORK:\n*\n", env!("CARGO_PKG_VERSION"))
+    format!("CACHE MANIFEST\n# {} {hash:016x}\nCACHE:\n/\n/app-icon.png\nNETWORK:\n*\n", env!("CARGO_PKG_VERSION"))
 }
 
 fn no_content() -> Reply {
@@ -281,7 +280,6 @@ fn route(state: &State, head: &str, body: &[u8], loopback: bool) -> Reply {
         ("GET", "/") => cached("text/html; charset=utf-8", UI.replace("__VERSION__", env!("CARGO_PKG_VERSION"))),
         ("GET", "/kraken.appcache") => cached("text/cache-manifest", appcache()),
         ("GET", "/app-icon.png") => cached("image/png", APP_ICON),
-        ("GET", "/bg.jpg") => cached("image/jpeg", BG),
         ("GET", "/api/state") => reply(200, "application/json", api_state(state)),
         ("GET", p) if p.starts_with("/api/sizes/") => sizes(state, &p["/api/sizes/".len()..]),
         ("GET", "/api/settings") => {
@@ -289,6 +287,13 @@ fn route(state: &State, head: &str, body: &[u8], loopback: bool) -> Reply {
             reply(200, "application/json", v.to_string())
         }
         ("POST", "/api/settings") => post_settings(state, body),
+        ("GET", "/api/ampr") => reply(200, "application/json", crate::ampr_status().to_string()),
+        // The UI's "Update now": forced, one attempt, answered when done (one thread per request).
+        ("POST", "/api/ampr/update") => match crate::ampr_update(state, true, 1) {
+            Ok(m) => reply(200, "text/plain", m),
+            Err(e) if e.contains("already running") => reply(409, "text/plain", e),
+            Err(e) => reply(502, "text/plain", e),
+        },
         // A newer copy taking over the port (loopback, empty body) or the UI's Shut down (body
         // "shutdown", from any host, as Dump Forge's Stop).
         ("POST", "/api/quit") if (loopback || body == b"shutdown") && state.paused() => {
@@ -322,6 +327,9 @@ fn route(state: &State, head: &str, body: &[u8], loopback: bool) -> Reply {
         ("POST", p) if p.starts_with("/api/rebuild/") => rebuild(state, &p["/api/rebuild/".len()..]),
         ("POST", p) if p.starts_with("/api/delete/") => delete(state, &p["/api/delete/".len()..], body),
         ("POST", "/api/purge") => {
+            if state.settings.lock().unwrap().source_mode != crate::source_mode::SourceMode::All {
+                return reply(409, "text/plain", "cache purge requires source_mode=all");
+            }
             log!("cache purge requested");
             state.purge.store(true, Ordering::SeqCst);
             state.wake();
