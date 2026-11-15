@@ -434,6 +434,12 @@ button:disabled { opacity: 0.5; cursor: default; }
       <button id="logtoggle" type="button" aria-expanded="false" aria-controls="log">Show log</button>
     </div>
     <div class="logbox" id="logbox"><pre id="log"></pre></div>
+    <details class="row col" id="diag-panel">
+      <summary class="lbl" data-i18n="diagTitle">Scan and cache diagnostics</summary>
+      <span class="hint" data-i18n="diagHint">Management timers since start; not in-game AMPR read speeds.</span>
+      <p id="diag-scan"></p>
+      <p id="diag-build"></p>
+    </details>
     <label class="row col"><span class="lbl" data-i18n="scanPaths">Scan paths</span>
       <span class="hint" data-i18n="scanPathsHint">One per line. Empty = default roots (/data/homebrew, /data/etaHEN/games, each drive's homebrew, etaHEN/games and root).</span>
       <textarea id="f_scanpath" spellcheck="false"></textarea></label>
@@ -600,6 +606,11 @@ var MSG = {
     purgeCache: 'Purge cache', save: 'Save',
     cacheInfo: 'Cache: {size} in {path}, {free} free on the internal SSD.',
     driveInfo: '{drive}: {free} free of {total}',
+    diagTitle: 'Scan and cache diagnostics',
+    diagHint: 'RAM-only timings since start; not AMPR in-game I/O latency or USB throughput.',
+    diagNone: 'Not measured yet.',
+    diagScan: 'Last scan: {ms} ms, {games} games, {duplicates} duplicates, {errors} errors.',
+    diagBuild: 'Last cache build: {title} ({kind}, {drive}) — {ms} ms — {result}.',
     loading: 'Loading...', saving: 'Saving...', saved: 'Saved.',
     loadFailed: 'Could not load settings: {error}. Close and reopen to retry; Save is off.',
     saveFailed: 'Save failed: {error}'
@@ -1143,6 +1154,11 @@ var MSG = {
     purgeCache: 'Limpar cache', save: 'Salvar',
     cacheInfo: 'Cache: {size} em {path}, {free} livres no SSD interno.',
     driveInfo: '{drive}: livre {free} de {total}',
+    diagTitle: 'Diagnóstico de varredura e cache',
+    diagHint: 'Tempos em memória desde o início do Kraken; não medem a leitura AMPR durante a partida nem a velocidade do USB.',
+    diagNone: 'Ainda não medido.',
+    diagScan: 'Última varredura: {ms} ms, {games} jogos, {duplicates} duplicados, {errors} erros.',
+    diagBuild: 'Último cache: {title} ({kind}, {drive}) — {ms} ms — {result}.',
     loading: 'Carregando...', saving: 'Salvando...', saved: 'Salvo.',
     loadFailed: 'Não foi possível carregar as configurações: {error}. Feche e abra de novo para tentar outra vez; Salvar está desativado.',
     saveFailed: 'Falha ao salvar: {error}'
@@ -1996,6 +2012,18 @@ function readSettings() {
   return v;
 }
 function renderSettingsInfo() {
+  var diag = (state && state.diagnostics) || {};
+  var scan = diag.scan;
+  var builds = Array.isArray(diag.builds) ? diag.builds : [];
+  var build = builds.length ? builds[builds.length - 1] : null;
+  setText($('diag-scan'), scan ? t('diagScan', {
+    ms: scan.elapsed_ms, games: scan.games, duplicates: scan.duplicates, errors: scan.errors
+  }) : t('diagNone'));
+  setText($('diag-build'), build ? t('diagBuild', {
+    title: build.title_id, kind: build.kind === 'pkg' ? 'PKG' : t('badgeFolder'),
+    drive: driveLabel(build.drive), ms: build.elapsed_ms,
+    result: t(build.success ? 'stReady' : 'stError')
+  }) : t('diagNone'));
   var c = (state && state.cache) || {};
   setText($('scache'), t('cacheInfo', { size: fmtSize(c.size), path: c.path || '/data/krakenmount/caches', free: gb(c.free) }));
   var drives = (state && Array.isArray(state.drives)) ? state.drives : [];

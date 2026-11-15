@@ -174,6 +174,10 @@ No overlay when neither layer applies.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum SourceMode { #[default] All, Pkg, Folder }
 
+// diagnostics.rs
+#[derive(Clone, Debug, Default)]
+pub struct Diagnostics { pub scan: Option<ScanSample>, pub builds: Vec<BuildSample> }
+
 // config.rs
 pub const CONFIG_PATH: &str = "/data/krakenmount/config.toml";
 #[derive(Clone, PartialEq, Debug)]
@@ -241,6 +245,14 @@ pub fn watch(titles: Arc<Mutex<HashSet<String>>>, running: Arc<Mutex<HashSet<Str
 pub fn https_get(url: &str, max: usize) -> std::io::Result<Vec<u8>>;
 ```
 
+## Basic management diagnostics (`src/diagnostics.rs`)
+
+- Uses monotonic `Instant` wall-clock timings for `scan::scan` and `cache::build`.
+- Records the last scan and up to 8 cache builds in RAM, reset at process start.
+- Exposes aggregate timings and title/drive/operation result; does **not** add full source paths.
+- **Not** AMPR runtime block I/O, USB transfer rate, cache hit rate, p95/p99 or game FPS.
+- The settings UI shows a compact pt-BR panel, falling back to English in other locales.
+
 ## Web API (`src/web.rs`, port 8097, served to `src/ui.html`)
 - `GET /` ui.html (`__VERSION__` filled in); `GET /app-icon.png` the app icon (`ps5/icon0.png`);
   `GET /kraken.appcache` the AppCache manifest (version + page hash). These three are `no-cache`,
@@ -248,7 +260,10 @@ pub fn https_get(url: &str, max: usize) -> std::io::Result<Vec<u8>>;
 - `GET /api/state`:
   `{version, busy, paused, waiting:"kstuff"|"shadowmount"|null, running:[TID], games:[{title_id, title_name, version, path, kind:"pkg"|"folder", packing:"plain"|"zstd"|"lz4"|null,
   drive, size, status:"pending"|"checking"|"building"|"ready"|"error"|"duplicate", error, cache_size, cache_built, backport}],
-  drives:[{mount, label, kind, total, free}], cache:{path, size, free, low_space, ampr_present}, log:[last 100 lines of the last 64 KiB]}`
+  drives:[{mount, label, kind, total, free}], diagnostics:{scope:"management",
+  scan:{elapsed_ms,games,duplicates,errors}|null,
+  builds:[{title_id,drive,kind:"pkg"|"folder",elapsed_ms,success}]},
+  cache:{path, size, free, low_space, ampr_present}, log:[last 100 lines of the last 64 KiB]}`
 - `GET /api/settings` -> settings JSON; `POST /api/settings` (JSON body) -> save, apply, rescan.
 - `GET /api/ampr` -> `{kind: "bundled"|"downloaded"|"hand"|"missing"|"error", version, updating}` of
   `ampr/libSceAmpr.sprx`; `POST /api/ampr/update` -> forced update, answered when done: 200 + result text,

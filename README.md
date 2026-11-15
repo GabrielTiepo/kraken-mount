@@ -42,6 +42,15 @@ source resides on a disconnected USB or extended drive**. Reconnect the drive
 before using Purge. This is a safety guard, not a guarantee against unplugging
 storage during an active operation. No package, backport or save is changed.
 
+### Diagnostics for external SATA USB SSDs (fork)
+
+Settings → Scan and cache diagnostics (PT-BR: Configurações → Diagnóstico de
+varredura e cache) displays the **last scan time** and **last cache-build time**
+plus title/drive and result. These values are RAM-only and reset on restart.
+
+**These are not AMPR read latencies, in-game throughput, game FPS or USB transfer
+rates.** See [L04 baseline](docs/L04-DIAGNOSTICS-BASELINE.md).
+
 To build it yourself: `ps5/build.sh` (needs Docker), output `target/ps5/kraken-mount.elf`.
 
 ## Thanks

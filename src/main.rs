@@ -11,6 +11,7 @@ mod i18n;
 mod ampr_index;
 mod cache;
 mod config;
+mod diagnostics;
 mod source_mode;
 mod launch;
 mod net;
@@ -27,7 +28,7 @@ use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 use web::State;
 
 pub const DATA_DIR: &str = "/data/krakenmount";
@@ -94,7 +95,15 @@ fn build_and_register(state: &State, s: &Settings, src: &Source, fresh: &Fresh, 
         }
         state.update(&src.path, |g| g.status = "building");
         check_space(state, s);
+        let started = Instant::now();
         let r = cache::build(src, s);
+        let elapsed = started.elapsed();
+        state.diagnostics.lock().unwrap().record_build(
+            tid, &src.drive, if src.kind == Kind::Pkg { "pkg" } else { "folder" },
+            elapsed, r.is_ok(),
+        );
+        log!("{tid}: cache build completed in {} ms ({})",
+            elapsed.as_millis(), if r.is_ok() { "ok" } else { "error" });
         check_space(state, s);
         r?;
     }
@@ -626,7 +635,11 @@ fn main() {
         *state.settings.lock().unwrap() = s.clone();
         state.busy.store(true, Ordering::SeqCst);
         let roots = if s.scan_paths.is_empty() { storage::default_scan_roots() } else { s.scan_paths.clone() };
+        let scan_started = Instant::now();
         let r = scan::scan(&roots, s.backports, s.source_mode);
+        state.diagnostics.lock().unwrap().record_scan(
+            scan_started.elapsed(), r.games.len(), r.duplicates.len(), r.errors.len(),
+        );
         if state.paused() {
             continue;
         }
