@@ -10,6 +10,7 @@ mod sys;
 mod i18n;
 mod ampr_index;
 mod cache;
+mod backport_inventory;
 mod config;
 mod diagnostics;
 mod source_mode;

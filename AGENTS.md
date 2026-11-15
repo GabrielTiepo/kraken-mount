@@ -25,6 +25,7 @@ sandbox. Web UI on port 8097 (opened from the "Kraken Mount" home-screen tile).
 | `src/storage.rs` | drives and default scan roots |
 | `src/scan.rs` | game discovery, backports, duplicates |
 | `src/cache.rs` | per-game cache `/data/krakenmount/caches/<TID>`, freshness, `.built`, purge |
+| `src/backport_inventory.rs` | file metadata inventory distinguishing non-library backport files from fakelib-only changes (L03) |
 | `src/ampr_index.rs` | writes `ampr_emu.index` + `ampr_assets.index` for pkg caches |
 | `src/register.rs` | home-screen registration, `/system_ex/app/<TID>` mounts, the tile |
 | `src/launch.rs` | launch watcher: the fakelib overlay, writable `/app0`, `/app0/kraken` |
@@ -48,6 +49,7 @@ sandbox. Web UI on port 8097 (opened from the "Kraken Mount" home-screen tile).
 - The **payload** builds only for PS5/FreeBSD. The pure `kraken-mount-pkg` reader also has
   native host tests: `cargo test -p kraken-mount-pkg --lib --locked`. Synthetic FIH/CNT fixtures
   exercise error handling but **do not** prove end-to-end PFS/AMPR or game compatibility.
+- Backport inventory host tests: `rustc --edition=2021 --deny warnings --test src/backport_inventory.rs -o /tmp/backport-inventory-tests && /tmp/backport-inventory-tests`.
 - USB guard host tests: `rustc --edition=2021 --deny warnings --test src/removable_guard.rs -o /tmp/removable-tests && /tmp/removable-tests`.
 - L04 host tests: `rustc --edition=2021 --deny warnings --test src/diagnostics.rs -o /tmp/diag-tests && /tmp/diag-tests`, UI smoke: `node scripts/test-diagnostics-ui.cjs`.
 - Changes to pure parser logic need native tests. `cargo check --workspace --locked --target
