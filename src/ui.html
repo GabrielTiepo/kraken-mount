@@ -588,6 +588,7 @@ var MSG = {
     sourceMode: 'Game source formats',
     sourceModeHint: 'Filters future scans only; does not delete games or caches. Backports are still applied to accepted PKGs.',
     sourceAll: 'All: PKG and folders', sourcePkg: 'Only PKG', sourceFolder: 'Only game folders',
+    purgeFiltered: 'Select All formats before clearing caches, to avoid deleting hidden games.',
     scanInterval: 'Scan interval, seconds (1-3600)',
     lowSpaceGb: 'Low space warning, GB',
     notify: 'System notifications',
@@ -1060,6 +1061,7 @@ var MSG = {
     sourceMode: 'Formatos de jogos detectados',
     sourceModeHint: 'Filtra apenas novas varreduras; não exclui jogos nem caches. Backports continuam associados aos PKGs.',
     sourceAll: 'Todos: PKG e pastas', sourcePkg: 'Somente PKG', sourceFolder: 'Somente pastas de jogos',
+    purgeFiltered: 'Selecione Todos os formatos antes de limpar caches, para preservar jogos ocultos pelo filtro.',
     scanInterval: 'Intervalo de varredura, segundos (1-3600)',
     lowSpaceGb: 'Aviso de pouco espaço, GB',
     notify: 'Notificações do sistema',
@@ -1867,9 +1869,16 @@ async function poll() {
 var BOOLS = ['inject_ampr', 'backports', 'notify', 'log', 'debug'];
 var NUMS = ['scan_interval_seconds', 'low_space_gb'];
 var settingsRequest = 0;
+function guardPurge() {
+  var filtered = $('f_source_mode').value !== 'all';
+  $('spurge').disabled = filtered;
+  $('spurge').title = filtered ? t('purgeFiltered') : '';
+}
+$('f_source_mode').onchange = guardPurge;
 function fillSettings(v) {
   $('f_scanpath').value = (v.scanpath || []).join('\n');
   $('f_source_mode').value = v.source_mode || 'all';
+  guardPurge();
   BOOLS.forEach(function (k) { $('f_' + k).checked = v[k] === true || v[k] === 1; });
   NUMS.forEach(function (k) { $('f_' + k).value = v[k] == null ? '' : v[k]; });
 }
