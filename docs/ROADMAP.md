@@ -9,7 +9,7 @@
 | [L00](https://github.com/GabrielTiepo/kraken-mount/issues/2) | Baseline, CI, testes e build ELF | **Código integrado (PR #10); compilação do payload validada no CI após sync, PS5 pendente** | Primeiro; manter referência ao ELF atual |
 | [L01](https://github.com/GabrielTiepo/kraken-mount/issues/3) | pt-BR, biblioteca, formatos PKG/pasta | **Parcial — [PR #11](https://github.com/GabrielTiepo/kraken-mount/pull/11) integrado e CI verde**; funcionalidades adicionais/PS5 pendentes | L00 |
 | [L02](https://github.com/GabrielTiepo/kraken-mount/issues/4) | Backport, fakelib e perfis por jogo | ☐ Pendente | L00 |
-| [L03](https://github.com/GabrielTiepo/kraken-mount/issues/5) | Cache incremental, atualização atômica e falhas USB | **Parcial — [PR #14](https://github.com/GabrielTiepo/kraken-mount/pull/14) integrado e CI verde**; cache incremental/PS5 pendentes | L00; ideal antes de L06 |
+| [L03](https://github.com/GabrielTiepo/kraken-mount/issues/5) | Cache incremental, atualização atômica e falhas USB | **Parcial — [PR #14](https://github.com/GabrielTiepo/kraken-mount/pull/14) + [PR #15](https://github.com/GabrielTiepo/kraken-mount/pull/15) integrados, CI verde**; cache de arquivos do jogo, staging/PS5 pendentes | L00; ideal antes de L06 |
 | [L04](https://github.com/GabrielTiepo/kraken-mount/issues/6) | Diagnóstico e A/B de desempenho no SSD SATA USB | **Parcial — [PR #12](https://github.com/GabrielTiepo/kraken-mount/pull/12) integrado e CI verde**; métricas AMPR em jogo/PS5 pendentes | Baseline L00; recomendações somente com medição |
 | [L05](https://github.com/GabrielTiepo/kraken-mount/issues/7) | Compatibilidade FPKG e arquivos esparsos | ☐ Pendente | Fixtures L00 e estabilidade do cache |
 | [L06](https://github.com/GabrielTiepo/kraken-mount/issues/8) | FPKG base + segundo PKG (FIH/LIH) | ☐ Pendente | L03/L05; investigar runtime AMPR |
@@ -22,6 +22,7 @@
 - [PR #11](https://github.com/GabrielTiepo/kraken-mount/pull/11) (L01) foi adaptado à v0.2.0, validado por CI e **integrado**, mantendo `ampr_auto_update`.
 - [PR #12](https://github.com/GabrielTiepo/kraken-mount/pull/12) (L04) foi adaptado à v0.2.0, aprovado pelo CI e **integrado à `develop`** após o PR #11.
 - [PR #14](https://github.com/GabrielTiepo/kraken-mount/pull/14) (L03) foi validado por CI e **integrado**; protege caches quando uma unidade USB/ext previamente indexada não está montada.
+- [PR #15](https://github.com/GabrielTiepo/kraken-mount/pull/15) (L03) foi validado por CI e **integrado**; atualizar somente fakelib de backport FPKG evita reindexar dados do jogo quando arquivo fora da biblioteca não foi modificado.
 - GitHub Actions passou nos PRs #11, #12 e #14 (checks e Docker ELF). **Nenhum ELF personalizado foi homologado no PS5**; a `main` continua preservada.
 
 ## Ordem prática recomendada
