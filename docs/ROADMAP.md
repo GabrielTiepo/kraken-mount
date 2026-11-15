@@ -6,14 +6,14 @@
 
 | Lote | Tema | Estado | Dependência / gate |
 |---|---|---|---|
-| L00 | Baseline, CI, testes e build ELF | ☐ Pendente | Primeiro; manter referência ao ELF atual |
-| L01 | pt-BR, biblioteca, formatos PKG/pasta | ☐ Pendente | L00 |
-| L02 | Backport, fakelib e perfis por jogo | ☐ Pendente | L00 |
-| L03 | Cache incremental, atualização atômica e falhas USB | ☐ Pendente | L00; ideal antes de L06 |
-| L04 | Diagnóstico e A/B de desempenho no SSD SATA USB | ☐ Pendente | Baseline L00; recomendações somente com medição |
-| L05 | Compatibilidade FPKG e arquivos esparsos | ☐ Pendente | Fixtures L00 e estabilidade do cache |
-| L06 | FPKG base + segundo PKG (FIH/LIH) | ☐ Pendente | L03/L05; investigar runtime AMPR |
-| L07 | Homologação geral, beta ELF e rollout | ☐ Pendente | L00–L06 implementados conforme escopo |
+| [L00](https://github.com/GabrielTiepo/kraken-mount/issues/2) | Baseline, CI, testes e build ELF | ☐ Pendente | Primeiro; manter referência ao ELF atual |
+| [L01](https://github.com/GabrielTiepo/kraken-mount/issues/3) | pt-BR, biblioteca, formatos PKG/pasta | ☐ Pendente | L00 |
+| [L02](https://github.com/GabrielTiepo/kraken-mount/issues/4) | Backport, fakelib e perfis por jogo | ☐ Pendente | L00 |
+| [L03](https://github.com/GabrielTiepo/kraken-mount/issues/5) | Cache incremental, atualização atômica e falhas USB | ☐ Pendente | L00; ideal antes de L06 |
+| [L04](https://github.com/GabrielTiepo/kraken-mount/issues/6) | Diagnóstico e A/B de desempenho no SSD SATA USB | ☐ Pendente | Baseline L00; recomendações somente com medição |
+| [L05](https://github.com/GabrielTiepo/kraken-mount/issues/7) | Compatibilidade FPKG e arquivos esparsos | ☐ Pendente | Fixtures L00 e estabilidade do cache |
+| [L06](https://github.com/GabrielTiepo/kraken-mount/issues/8) | FPKG base + segundo PKG (FIH/LIH) | ☐ Pendente | L03/L05; investigar runtime AMPR |
+| [L07](https://github.com/GabrielTiepo/kraken-mount/issues/9) | Homologação geral, beta ELF e rollout | ☐ Pendente | L00–L06 implementados conforme escopo |
 
 ## Ordem prática recomendada
 
@@ -38,14 +38,20 @@
 
 ## Acompanhamento via GitHub Issues
 
-A tentativa de criar a Issue épica foi recusada pelo GitHub: **HTTP 410 — "Issues has been disabled in this repository."**
+**Issues habilitadas e criadas em 2026-11-15.**
 
-Para habilitar: no fork, abra **Settings → General → Features → Issues** e marque **Issues**. Quando habilitado, criar:
-- uma Issue épica: "Evolução do Kraken Mount — FPKG direto, experiência ShadowMountPlus e SSD SATA USB";
-- oito Issues L00–L07 com escopo, dependências e aceite da seção correspondente do plano;
-- rastreio de PRs para `develop` e links de CI/homologação.
+- [Épico principal #1](https://github.com/GabrielTiepo/kraken-mount/issues/1)
+- [Issue #2 — L00](https://github.com/GabrielTiepo/kraken-mount/issues/2)
+- [Issue #3 — L01](https://github.com/GabrielTiepo/kraken-mount/issues/3)
+- [Issue #4 — L02](https://github.com/GabrielTiepo/kraken-mount/issues/4)
+- [Issue #5 — L03](https://github.com/GabrielTiepo/kraken-mount/issues/5)
+- [Issue #6 — L04](https://github.com/GabrielTiepo/kraken-mount/issues/6)
+- [Issue #7 — L05](https://github.com/GabrielTiepo/kraken-mount/issues/7)
+- [Issue #8 — L06](https://github.com/GabrielTiepo/kraken-mount/issues/8)
+- [Issue #9 — L07](https://github.com/GabrielTiepo/kraken-mount/issues/9)
 
-**Este roadmap é o acompanhamento provisório até as Issues estarem habilitadas.**
+Acompanhar PRs direcionados a `develop`, check runs e evidências de homologação nas respectivas issues. **Issue aberta não significa implementação concluída.**
+
 
 ## Referências
 
