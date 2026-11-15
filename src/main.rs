@@ -11,6 +11,7 @@ mod i18n;
 mod ampr_index;
 mod cache;
 mod config;
+mod source_mode;
 mod launch;
 mod register;
 mod scan;
@@ -405,7 +406,7 @@ fn main() {
         *state.settings.lock().unwrap() = s.clone();
         state.busy.store(true, Ordering::SeqCst);
         let roots = if s.scan_paths.is_empty() { storage::default_scan_roots() } else { s.scan_paths.clone() };
-        let r = scan::scan(&roots, s.backports);
+        let r = scan::scan(&roots, s.backports, s.source_mode);
         if state.paused() {
             continue;
         }
